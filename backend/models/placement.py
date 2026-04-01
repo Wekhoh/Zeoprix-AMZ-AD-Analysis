@@ -1,6 +1,6 @@
 """展示位置记录模型"""
 
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Index, Integer, String, Float, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from backend.models.base import Base, TimestampMixin
 
@@ -16,14 +16,13 @@ class PlacementRecord(Base, TimestampMixin):
             "placement_type",
             name="uq_placement_date_campaign_type",
         ),
+        Index("ix_placement_campaign_date", "campaign_id", "date"),
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     date = Column(String, nullable=False)  # YYYY-MM-DD
     campaign_id = Column(Integer, ForeignKey("campaigns.id"), nullable=False)
-    placement_type = Column(
-        String, nullable=False
-    )  # 搜索顶部 / 搜索其他位置 / 产品页面
+    placement_type = Column(String, nullable=False)  # 搜索顶部 / 搜索其他位置 / 产品页面
     bidding_strategy = Column(String)
     bid_adjustment = Column(Integer, default=0)  # 竞价调整百分比
     impressions = Column(Integer, nullable=False, default=0)

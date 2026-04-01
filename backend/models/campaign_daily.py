@@ -1,6 +1,6 @@
 """广告活动/广告组日数据模型"""
 
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Index, Integer, String, Float, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from backend.models.base import Base, TimestampMixin
 
@@ -11,6 +11,7 @@ class CampaignDailyRecord(Base, TimestampMixin):
     __tablename__ = "campaign_daily_records"
     __table_args__ = (
         UniqueConstraint("date", "campaign_id", name="uq_campaign_daily_date_campaign"),
+        Index("ix_cdaily_campaign_date", "campaign_id", "date"),
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -36,6 +37,7 @@ class AdGroupDailyRecord(Base, TimestampMixin):
     __tablename__ = "ad_group_daily_records"
     __table_args__ = (
         UniqueConstraint("date", "ad_group_id", name="uq_adgroup_daily_date_adgroup"),
+        Index("ix_adaily_adgroup_date", "ad_group_id", "date"),
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)

@@ -1,0 +1,20 @@
+[project]
+name = "amz-ad-tracker"
+version = "1.0.0"
+description = "Amazon Advertising Intelligent Tracking System"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"

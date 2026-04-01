@@ -10,9 +10,7 @@ class Rule(Base, TimestampMixin):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False)
     description = Column(String)
-    condition_field = Column(
-        String, nullable=False
-    )  # acos, roas, clicks, orders, spend, ctr, cpc
+    condition_field = Column(String, nullable=False)  # acos, roas, clicks, orders, spend, ctr, cpc
     condition_operator = Column(String, nullable=False)  # >, <, >=, <=, ==
     condition_value = Column(Float, nullable=False)
     condition_min_data = Column(Integer, default=0)  # min clicks/impressions to trigger

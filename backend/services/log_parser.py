@@ -129,9 +129,7 @@ def parse_operation_log_text(
                     "level_type": "ad_group" if is_adgroup else "campaign",
                     "campaign_name": campaign_name,
                     "ad_group_name": campaign_name,
-                    "operation_type": "Ad group change"
-                    if is_adgroup
-                    else "Campaign change",
+                    "operation_type": "Ad group change" if is_adgroup else "Campaign change",
                     "change_type": change_type,
                     "from_value": from_value,
                     "to_value": to_value,
@@ -161,12 +159,7 @@ def parse_operation_log_content(
 
     if not campaign_name:
         # 尝试从文件名提取
-        name = (
-            filename.replace("操作日志", "")
-            .replace("广告组", "")
-            .replace(".txt", "")
-            .strip()
-        )
+        name = filename.replace("操作日志", "").replace("广告组", "").replace(".txt", "").strip()
         campaign_name = name
 
     return parse_operation_log_text(content, campaign_name, is_adgroup), is_adgroup

@@ -6,7 +6,13 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.models import Product, ProductVariant, Marketplace, OrganicSales, ImportHistory
+from backend.models import (
+    Product,
+    ProductVariant,
+    Marketplace,
+    OrganicSales,
+    ImportHistory,
+)
 from backend.services.backup_service import create_backup, list_backups, delete_backup
 
 router = APIRouter()

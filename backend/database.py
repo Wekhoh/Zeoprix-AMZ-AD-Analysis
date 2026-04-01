@@ -43,6 +43,18 @@ def _run_migrations(connection):
     if "category_key" not in product_cols:
         cursor.execute("ALTER TABLE products ADD COLUMN category_key TEXT")
 
+    # Sprint 13.3: Create performance indexes (idempotent)
+    _indexes = [
+        ("ix_placement_campaign_date", "placement_records", "campaign_id, date"),
+        ("ix_cdaily_campaign_date", "campaign_daily_records", "campaign_id, date"),
+        ("ix_adaily_adgroup_date", "ad_group_daily_records", "ad_group_id, date"),
+        ("ix_oplog_campaign_date", "operation_logs", "campaign_id, date"),
+        ("ix_sterm_campaign", "search_term_reports", "campaign_id"),
+        ("ix_note_campaign", "notes", "campaign_id"),
+    ]
+    for idx_name, table, cols in _indexes:
+        cursor.execute(f"CREATE INDEX IF NOT EXISTS {idx_name} ON {table} ({cols})")
+
     cursor.close()
 
 

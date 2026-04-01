@@ -10,6 +10,10 @@ from fastapi import UploadFile
 from openpyxl import load_workbook
 from sqlalchemy.orm import Session
 
+from backend.logging_config import get_logger
+
+logger = get_logger("migration")
+
 from backend.models import (
     Marketplace,
     Product,
@@ -52,20 +56,14 @@ def _seed_base_data(db: Session) -> tuple:
     # 产品
     product = db.query(Product).filter_by(sku="ZP-TP01").first()
     if not product:
-        product = Product(
-            sku="ZP-TP01", name="ZEOPRIX Travel Pillow", category="旅行枕"
-        )
+        product = Product(sku="ZP-TP01", name="ZEOPRIX Travel Pillow", category="旅行枕")
         db.add(product)
         db.flush()
 
     # 变体
     variants = {}
     for code, name in [("DBL", "双层枕"), ("BLK", "黑色款")]:
-        v = (
-            db.query(ProductVariant)
-            .filter_by(product_id=product.id, variant_code=code)
-            .first()
-        )
+        v = db.query(ProductVariant).filter_by(product_id=product.id, variant_code=code).first()
         if not v:
             v = ProductVariant(
                 product_id=product.id,
@@ -88,16 +86,12 @@ def _get_or_create_campaign(
     bidding_strategy: str = "",
 ) -> Campaign:
     """获取或创建广告活动（迁移用）"""
-    campaign = (
-        db.query(Campaign).filter_by(name=name, marketplace_id=marketplace_id).first()
-    )
+    campaign = db.query(Campaign).filter_by(name=name, marketplace_id=marketplace_id).first()
     if campaign:
         return campaign
 
     variant_code = extract_variant_code(name)
-    variant_id = (
-        variants[variant_code].id if variant_code and variant_code in variants else None
-    )
+    variant_id = variants[variant_code].id if variant_code and variant_code in variants else None
     strategy = bidding_strategy or extract_bidding_strategy_type(name)
 
     campaign = Campaign(
@@ -174,9 +168,7 @@ async def migrate_excel_to_db(db: Session, file: UploadFile) -> ImportResult:
         # Step 1: 播种基础数据
         marketplace, product, variants = _seed_base_data(db)
         details.append(
-            ImportDetail(
-                message="基础数据播种完成 (US 站点, ZP-TP01 产品, DBL/BLK 变体)"
-            )
+            ImportDetail(message="基础数据播种完成 (US 站点, ZP-TP01 产品, DBL/BLK 变体)")
         )
 
         # Step 2: 迁移展示位置数据 (216 条)
@@ -191,9 +183,7 @@ async def migrate_excel_to_db(db: Session, file: UploadFile) -> ImportResult:
                     continue
 
                 date_str = _cell_str(date_val)
-                campaign = _get_or_create_campaign(
-                    db, str(campaign_name), marketplace.id, variants
-                )
+                campaign = _get_or_create_campaign(db, str(campaign_name), marketplace.id, variants)
 
                 placement_type = _cell_str(ws.cell(row=row, column=3).value)
                 bidding_strategy = _cell_str(ws.cell(row=row, column=4).value)
@@ -226,9 +216,7 @@ async def migrate_excel_to_db(db: Session, file: UploadFile) -> ImportResult:
                 counts["placement"] += 1
 
             db.flush()
-            details.append(
-                ImportDetail(message=f"展示位置: 迁移 {counts['placement']} 条")
-            )
+            details.append(ImportDetail(message=f"展示位置: 迁移 {counts['placement']} 条"))
 
         # Step 3: 迁移广告活动日数据
         if SHEET_CONFIG["campaign_data"]["name"] in wb.sheetnames:
@@ -276,9 +264,7 @@ async def migrate_excel_to_db(db: Session, file: UploadFile) -> ImportResult:
                 counts["campaign_data"] += 1
 
             db.flush()
-            details.append(
-                ImportDetail(message=f"广告活动数据: 迁移 {counts['campaign_data']} 条")
-            )
+            details.append(ImportDetail(message=f"广告活动数据: 迁移 {counts['campaign_data']} 条"))
 
         # Step 4: 迁移广告组日数据
         if SHEET_CONFIG["adgroup_data"]["name"] in wb.sheetnames:
@@ -292,9 +278,7 @@ async def migrate_excel_to_db(db: Session, file: UploadFile) -> ImportResult:
                     continue
 
                 date_str = _cell_str(date_val)
-                campaign = _get_or_create_campaign(
-                    db, str(campaign_name), marketplace.id, variants
-                )
+                campaign = _get_or_create_campaign(db, str(campaign_name), marketplace.id, variants)
                 ad_group = db.query(AdGroup).filter_by(campaign_id=campaign.id).first()
 
                 if not ad_group:
@@ -326,9 +310,7 @@ async def migrate_excel_to_db(db: Session, file: UploadFile) -> ImportResult:
                 counts["adgroup_data"] += 1
 
             db.flush()
-            details.append(
-                ImportDetail(message=f"广告组数据: 迁移 {counts['adgroup_data']} 条")
-            )
+            details.append(ImportDetail(message=f"广告组数据: 迁移 {counts['adgroup_data']} 条"))
 
         # Step 5: 迁移广告活动操作日志
         if SHEET_CONFIG["campaign_log"]["name"] in wb.sheetnames:
@@ -343,9 +325,7 @@ async def migrate_excel_to_db(db: Session, file: UploadFile) -> ImportResult:
 
                 date_str = _cell_str(date_val)
                 time_str = _cell_str(ws.cell(row=row, column=2).value)
-                campaign = _get_or_create_campaign(
-                    db, str(campaign_name), marketplace.id, variants
-                )
+                campaign = _get_or_create_campaign(db, str(campaign_name), marketplace.id, variants)
 
                 change_type = _cell_str(ws.cell(row=row, column=8).value)
                 from_val = _cell_str(ws.cell(row=row, column=9).value)
@@ -387,9 +367,7 @@ async def migrate_excel_to_db(db: Session, file: UploadFile) -> ImportResult:
                     db.rollback()
 
             details.append(
-                ImportDetail(
-                    message=f"广告活动操作日志: 迁移 {counts['campaign_log']} 条"
-                )
+                ImportDetail(message=f"广告活动操作日志: 迁移 {counts['campaign_log']} 条")
             )
 
         # Step 6: 迁移广告组操作日志
@@ -405,9 +383,7 @@ async def migrate_excel_to_db(db: Session, file: UploadFile) -> ImportResult:
 
                 date_str = _cell_str(date_val)
                 time_str = _cell_str(ws.cell(row=row, column=2).value)
-                campaign = _get_or_create_campaign(
-                    db, str(campaign_name), marketplace.id, variants
-                )
+                campaign = _get_or_create_campaign(db, str(campaign_name), marketplace.id, variants)
                 ad_group = db.query(AdGroup).filter_by(campaign_id=campaign.id).first()
 
                 change_type = _cell_str(ws.cell(row=row, column=8).value)
@@ -449,9 +425,7 @@ async def migrate_excel_to_db(db: Session, file: UploadFile) -> ImportResult:
                 except Exception:
                     db.rollback()
 
-            details.append(
-                ImportDetail(message=f"广告组操作日志: 迁移 {counts['adgroup_log']} 条")
-            )
+            details.append(ImportDetail(message=f"广告组操作日志: 迁移 {counts['adgroup_log']} 条"))
 
         # 更新广告活动状态
         _update_campaign_statuses(db)
@@ -502,8 +476,6 @@ def _update_campaign_statuses(db: Session):
             .first()
         )
 
-        if last_status_log and any(
-            s in str(last_status_log.to_value) for s in valid_statuses
-        ):
+        if last_status_log and any(s in str(last_status_log.to_value) for s in valid_statuses):
             campaign.status = last_status_log.to_value
             campaign.status_updated_at = last_status_log.date

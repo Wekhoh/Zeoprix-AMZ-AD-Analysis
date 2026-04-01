@@ -117,9 +117,7 @@ def parse_csv_placement_data(
         impressions = _clean_num(row.get("Impressions", 0), as_int=True)
         clicks = _clean_num(row.get("Clicks", 0), as_int=True)
         spend = _clean_num(row.get("Spend (USD)", row.get("Spend", 0)))
-        orders = _clean_num(
-            row.get("Orders", row.get("14 Day Total Orders (#)", 0)), as_int=True
-        )
+        orders = _clean_num(row.get("Orders", row.get("14 Day Total Orders (#)", 0)), as_int=True)
         sales = _clean_num(row.get("Sales (USD)", row.get("14 Day Total Sales", 0)))
 
         if placement_raw == "PLACEMENT_TOP":
@@ -185,15 +183,11 @@ def parse_csv_campaign_report(
             continue
 
         # 统一提取指标（兼容不同列名）
-        impressions = _clean_num(
-            row.get("Impressions", row.get("impressions", 0)), as_int=True
-        )
+        impressions = _clean_num(row.get("Impressions", row.get("impressions", 0)), as_int=True)
         clicks = _clean_num(row.get("Clicks", row.get("clicks", 0)), as_int=True)
         spend = _clean_num(row.get("Spend", row.get("Spend (USD)", row.get("Cost", 0))))
         orders = _clean_num(
-            row.get(
-                "14 Day Total Orders (#)", row.get("Orders", row.get("Purchases", 0))
-            ),
+            row.get("14 Day Total Orders (#)", row.get("Orders", row.get("Purchases", 0))),
             as_int=True,
         )
         sales = _clean_num(

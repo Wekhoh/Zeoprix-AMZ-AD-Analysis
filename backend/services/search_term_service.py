@@ -165,9 +165,7 @@ def import_search_terms(db: Session, content: str, filename: str) -> dict:
     return {"imported": imported, "skipped": skipped}
 
 
-def get_search_term_summary(
-    db: Session, campaign_id: Optional[int] = None
-) -> list[dict]:
+def get_search_term_summary(db: Session, campaign_id: Optional[int] = None) -> list[dict]:
     """搜索词汇总（按搜索词聚合）"""
     q = db.query(
         SearchTermReport.search_term,
@@ -262,9 +260,7 @@ def classify_search_terms_4bucket(
         ctr = t["ctr"]
 
         if clicks < 15:
-            low_data.append(
-                {**t, "bucket": "low_data", "action": "等待数据积累，暂不操作"}
-            )
+            low_data.append({**t, "bucket": "low_data", "action": "等待数据积累，暂不操作"})
         elif orders >= 2 and acos is not None and acos < target_acos:
             winners.append(
                 {
@@ -292,13 +288,9 @@ def classify_search_terms_4bucket(
                 }
             )
         elif orders >= 1:
-            winners.append(
-                {**t, "bucket": "winners", "action": "有转化潜力，观察并适度提高竞价"}
-            )
+            winners.append({**t, "bucket": "winners", "action": "有转化潜力，观察并适度提高竞价"})
         else:
-            potential.append(
-                {**t, "bucket": "potential", "action": "继续观察，考虑优化匹配方式"}
-            )
+            potential.append({**t, "bucket": "potential", "action": "继续观察，考虑优化匹配方式"})
 
     return {
         "winners": winners,

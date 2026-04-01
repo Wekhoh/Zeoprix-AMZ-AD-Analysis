@@ -32,9 +32,7 @@ ACTION_LABELS = {
 
 def _get_campaign_metrics(db: Session, campaign: Campaign, period_days: int) -> dict:
     """获取广告活动在指定时间段内的聚合指标"""
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=period_days)).strftime(
-        "%Y-%m-%d"
-    )
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=period_days)).strftime("%Y-%m-%d")
 
     row = (
         db.query(
@@ -129,9 +127,7 @@ def evaluate_rules(db: Session) -> list[dict]:
                         if actual_value is not None
                         else None,
                         "action_type": rule.action_type,
-                        "recommended_action": ACTION_LABELS.get(
-                            rule.action_type, rule.action_type
-                        ),
+                        "recommended_action": ACTION_LABELS.get(rule.action_type, rule.action_type),
                     }
                 )
 
@@ -176,13 +172,9 @@ def get_rule_results(db: Session, rule_id: int) -> list[dict]:
                     "condition_field": rule.condition_field,
                     "condition_operator": rule.condition_operator,
                     "condition_value": rule.condition_value,
-                    "triggered_value": round(actual_value, 4)
-                    if actual_value is not None
-                    else None,
+                    "triggered_value": round(actual_value, 4) if actual_value is not None else None,
                     "action_type": rule.action_type,
-                    "recommended_action": ACTION_LABELS.get(
-                        rule.action_type, rule.action_type
-                    ),
+                    "recommended_action": ACTION_LABELS.get(rule.action_type, rule.action_type),
                 }
             )
 

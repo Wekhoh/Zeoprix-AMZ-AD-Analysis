@@ -9,6 +9,10 @@ from fastapi import UploadFile
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
+from backend.logging_config import get_logger
+
+logger = get_logger("import")
+
 from backend.models import (
     Campaign,
     AdGroup,
@@ -42,9 +46,7 @@ def _get_or_create_campaign(
         db.flush()
 
     campaign = (
-        db.query(Campaign)
-        .filter_by(name=campaign_name, marketplace_id=marketplace.id)
-        .first()
+        db.query(Campaign).filter_by(name=campaign_name, marketplace_id=marketplace.id).first()
     )
     if campaign:
         return campaign
@@ -163,9 +165,7 @@ def _upsert_campaign_daily(db: Session, campaign_id: int, data: dict) -> str:
     return "imported"
 
 
-async def process_placement_csv_upload(
-    db: Session, files: list[UploadFile]
-) -> ImportResult:
+async def process_placement_csv_upload(db: Session, files: list[UploadFile]) -> ImportResult:
     """处理展示位置 CSV 上传"""
     total_imported = 0
     total_updated = 0
@@ -184,9 +184,7 @@ async def process_placement_csv_upload(
                     continue
             else:
                 details.append(
-                    ImportDetail(
-                        message=f"无法解码文件: {file.filename}", level="error"
-                    )
+                    ImportDetail(message=f"无法解码文件: {file.filename}", level="error")
                 )
                 continue
 
@@ -230,9 +228,7 @@ async def process_placement_csv_upload(
 
         except Exception as e:
             db.rollback()
-            details.append(
-                ImportDetail(message=f"{file.filename}: 错误 - {e}", level="error")
-            )
+            details.append(ImportDetail(message=f"{file.filename}: 错误 - {e}", level="error"))
 
     # 记录导入历史
     db.add(
@@ -292,9 +288,7 @@ async def preview_csv_upload(files: list[UploadFile]) -> dict:
             dates = [row["date"] for row in placement_data if row.get("date")]
             date_range = ""
             if dates:
-                date_range = (
-                    f"{min(dates)} ~ {max(dates)}" if len(dates) > 1 else dates[0]
-                )
+                date_range = f"{min(dates)} ~ {max(dates)}" if len(dates) > 1 else dates[0]
 
             # Sample rows (first 5)
             sample_rows = placement_data[:5]
@@ -331,9 +325,7 @@ async def preview_csv_upload(files: list[UploadFile]) -> dict:
     return {"files": previews}
 
 
-async def process_operation_log_upload(
-    db: Session, files: list[UploadFile]
-) -> ImportResult:
+async def process_operation_log_upload(db: Session, files: list[UploadFile]) -> ImportResult:
     """处理操作日志 TXT 上传"""
     total_imported = 0
     total_skipped = 0
@@ -379,9 +371,7 @@ async def process_operation_log_upload(
 
                 ad_group_id = None
                 if is_adgroup:
-                    ad_group = (
-                        db.query(AdGroup).filter_by(campaign_id=campaign.id).first()
-                    )
+                    ad_group = db.query(AdGroup).filter_by(campaign_id=campaign.id).first()
                     if ad_group:
                         ad_group_id = ad_group.id
 
@@ -413,9 +403,7 @@ async def process_operation_log_upload(
 
         except Exception as e:
             db.rollback()
-            details.append(
-                ImportDetail(message=f"{file.filename}: 错误 - {e}", level="error")
-            )
+            details.append(ImportDetail(message=f"{file.filename}: 错误 - {e}", level="error"))
 
     # 导入完成后更新广告活动状态
     if total_imported > 0:

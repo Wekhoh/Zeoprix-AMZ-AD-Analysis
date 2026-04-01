@@ -19,10 +19,7 @@ router = APIRouter()
 @router.get("/categories")
 def list_categories():
     """获取可用的品类基准列表"""
-    return [
-        {"key": key, "label": CATEGORY_LABELS.get(key, key)}
-        for key in CATEGORY_BENCHMARKS
-    ]
+    return [{"key": key, "label": CATEGORY_LABELS.get(key, key)} for key in CATEGORY_BENCHMARKS]
 
 
 @router.get("/compare")

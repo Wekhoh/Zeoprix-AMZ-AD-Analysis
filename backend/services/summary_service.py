@@ -140,9 +140,7 @@ def summary_by_placement(
     return [{"placement_type": r[0], **_build_kpi_row(*r[1:])} for r in rows]
 
 
-def dashboard_overview(
-    db: Session, date_from=None, date_to=None, marketplace_id=None
-) -> dict:
+def dashboard_overview(db: Session, date_from=None, date_to=None, marketplace_id=None) -> dict:
     q = _base_query(db, date_from, date_to, marketplace_id=marketplace_id)
     agg = q.with_entities(
         func.sum(PlacementRecord.impressions),
@@ -156,18 +154,14 @@ def dashboard_overview(
 
     # 广告活动状态分布
     status_counts = (
-        db.query(Campaign.status, func.count(Campaign.id))
-        .group_by(Campaign.status)
-        .all()
+        db.query(Campaign.status, func.count(Campaign.id)).group_by(Campaign.status).all()
     )
 
     # 每日趋势
     daily_trend = summary_by_date(db, date_from, date_to, marketplace_id=marketplace_id)
 
     # TOP 5 花费活动
-    all_campaigns = summary_by_campaign(
-        db, date_from, date_to, marketplace_id=marketplace_id
-    )
+    all_campaigns = summary_by_campaign(db, date_from, date_to, marketplace_id=marketplace_id)
     all_campaigns.sort(key=lambda x: x["spend"], reverse=True)
     top_campaigns = all_campaigns[:5]
 
@@ -213,9 +207,7 @@ def dashboard_overview(
 
     # 利润计算（仅当产品成本已配置时）
     profit_data: dict = {}
-    variants_with_cost = (
-        db.query(ProductVariant).filter(ProductVariant.unit_cost.isnot(None)).all()
-    )
+    variants_with_cost = db.query(ProductVariant).filter(ProductVariant.unit_cost.isnot(None)).all()
 
     if variants_with_cost:
         total_unit_cost = sum(v.unit_cost or 0 for v in variants_with_cost)
@@ -234,10 +226,7 @@ def dashboard_overview(
         avg_price = (total_sales / total_orders) if total_orders > 0 else 0
         if avg_price > 0:
             break_even_acos = (
-                1
-                - avg_referral_pct
-                - (avg_fba_fee / avg_price)
-                - (avg_unit_cost / avg_price)
+                1 - avg_referral_pct - (avg_fba_fee / avg_price) - (avg_unit_cost / avg_price)
             )
         else:
             break_even_acos = None
@@ -252,9 +241,7 @@ def dashboard_overview(
         )
 
         profit_data = {
-            "break_even_acos": round(break_even_acos, 4)
-            if break_even_acos is not None
-            else None,
+            "break_even_acos": round(break_even_acos, 4) if break_even_acos is not None else None,
             "estimated_profit": round(estimated_profit, 2),
             "has_cost_data": True,
         }
@@ -272,11 +259,7 @@ def dashboard_overview(
 
     if organic_total_sales and organic_total_sales > 0:
         ad_spend = kpi.get("spend", 0) or 0
-        tacos_value = (
-            round(ad_spend / organic_total_sales, 4)
-            if organic_total_sales > 0
-            else None
-        )
+        tacos_value = round(ad_spend / organic_total_sales, 4) if organic_total_sales > 0 else None
         tacos_data = {"value": tacos_value, "has_data": True}
 
     return {

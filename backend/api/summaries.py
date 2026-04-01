@@ -72,6 +72,4 @@ def get_comparison(
     db: Session = Depends(get_db),
 ):
     """周期对比分析"""
-    return compare_periods(
-        db, period_a_from, period_a_to, period_b_from, period_b_to, campaign_id
-    )
+    return compare_periods(db, period_a_from, period_a_to, period_b_from, period_b_to, campaign_id)

@@ -12,7 +12,5 @@ class Base(DeclarativeBase):
 class TimestampMixin:
     """created_at / updated_at 自动时间戳"""
 
-    created_at = Column(
-        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
-    )
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(DateTime, onupdate=lambda: datetime.now(timezone.utc))

@@ -34,9 +34,7 @@ class Campaign(Base, TimestampMixin):
 
 class AdGroup(Base, TimestampMixin):
     __tablename__ = "ad_groups"
-    __table_args__ = (
-        UniqueConstraint("campaign_id", "name", name="uq_adgroup_campaign_name"),
-    )
+    __table_args__ = (UniqueConstraint("campaign_id", "name", name="uq_adgroup_campaign_name"),)
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     campaign_id = Column(Integer, ForeignKey("campaigns.id"), nullable=False)

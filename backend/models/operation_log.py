@@ -1,6 +1,6 @@
 """操作日志模型"""
 
-from sqlalchemy import Column, Integer, String, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Index, Integer, String, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from backend.models.base import Base, TimestampMixin
 
@@ -20,6 +20,7 @@ class OperationLog(Base, TimestampMixin):
             "to_value",
             name="uq_oplog_composite",
         ),
+        Index("ix_oplog_campaign_date", "campaign_id", "date"),
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)

@@ -19,9 +19,7 @@ from backend.services.summary_service import (
 # ============================================================
 HEADER_FONT = Font(name="Arial", bold=True, color="FFFFFF", size=11)
 HEADER_FILL = PatternFill(start_color="2563EB", end_color="2563EB", fill_type="solid")
-SUBHEADER_FILL = PatternFill(
-    start_color="DBEAFE", end_color="DBEAFE", fill_type="solid"
-)
+SUBHEADER_FILL = PatternFill(start_color="DBEAFE", end_color="DBEAFE", fill_type="solid")
 SUBHEADER_FONT = Font(name="Arial", bold=True, size=11)
 BODY_FONT = Font(name="Arial", size=10)
 TITLE_FONT = Font(name="Arial", bold=True, size=14, color="1F2937")
@@ -267,9 +265,7 @@ def generate_excel_report(
         ).number_format = FMT_PCT
 
         for col_idx in range(7, 12):
-            ws2.cell(row=total_row, column=col_idx).font = Font(
-                name="Arial", bold=True, size=10
-            )
+            ws2.cell(row=total_row, column=col_idx).font = Font(name="Arial", bold=True, size=10)
             ws2.cell(row=total_row, column=col_idx).border = THIN_BORDER
 
     _auto_width(ws2)
@@ -285,9 +281,7 @@ def generate_excel_report(
     _style_header(ws3, 1, len(headers3))
 
     # Sort by spend descending
-    sorted_campaigns = sorted(
-        campaign_data, key=lambda x: x.get("spend", 0), reverse=True
-    )
+    sorted_campaigns = sorted(campaign_data, key=lambda x: x.get("spend", 0), reverse=True)
 
     for i, row in enumerate(sorted_campaigns):
         r = i + 2
@@ -437,9 +431,7 @@ def generate_excel_report(
 
     # Column totals
     total_row = len(campaigns) + 2
-    ws5.cell(row=total_row, column=1, value="合计").font = Font(
-        name="Arial", bold=True, size=10
-    )
+    ws5.cell(row=total_row, column=1, value="合计").font = Font(name="Arial", bold=True, size=10)
     ws5.cell(row=total_row, column=1).border = THIN_BORDER
     for j in range(len(placements) + 1):
         col = 2 + j

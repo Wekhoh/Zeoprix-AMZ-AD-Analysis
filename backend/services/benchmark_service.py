@@ -42,9 +42,7 @@ def get_benchmarks(category: str) -> Optional[dict[str, float]]:
     return CATEGORY_BENCHMARKS.get(category)
 
 
-def compare_with_benchmark(
-    actual_kpis: dict[str, float | None], category: str
-) -> list[dict]:
+def compare_with_benchmark(actual_kpis: dict[str, float | None], category: str) -> list[dict]:
     """Compare actual KPIs against category benchmarks.
 
     Returns a list of comparisons with status indicators.
@@ -59,9 +57,7 @@ def compare_with_benchmark(
         if actual_val is None:
             continue
 
-        diff_pct = (
-            round(((actual_val - bench_val) / bench_val) * 100) if bench_val else 0
-        )
+        diff_pct = round(((actual_val - bench_val) / bench_val) * 100) if bench_val else 0
 
         if metric in LOWER_IS_BETTER:
             status = "below" if actual_val <= bench_val else "above"

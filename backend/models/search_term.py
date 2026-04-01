@@ -1,6 +1,6 @@
 """搜索词报告模型（Phase 3）"""
 
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Index, Integer, String, Float, ForeignKey, UniqueConstraint
 from backend.models.base import Base, TimestampMixin
 
 
@@ -9,9 +9,8 @@ class SearchTermReport(Base, TimestampMixin):
 
     __tablename__ = "search_term_reports"
     __table_args__ = (
-        UniqueConstraint(
-            "date", "campaign_id", "search_term", name="uq_search_term_date_campaign"
-        ),
+        UniqueConstraint("date", "campaign_id", "search_term", name="uq_search_term_date_campaign"),
+        Index("ix_sterm_campaign", "campaign_id"),
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)

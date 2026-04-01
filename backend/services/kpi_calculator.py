@@ -25,9 +25,7 @@ def calc_cvr(orders: int, clicks: int) -> Optional[float]:
     return round(orders / clicks, 4) if clicks > 0 else None
 
 
-def enrich_placement_kpis(
-    record: PlacementRecord, campaign_name: str = ""
-) -> PlacementOut:
+def enrich_placement_kpis(record: PlacementRecord, campaign_name: str = "") -> PlacementOut:
     """为展示位置记录附加计算的 KPI"""
     return PlacementOut(
         id=record.id,

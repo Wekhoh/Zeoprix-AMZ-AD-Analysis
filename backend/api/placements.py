@@ -47,9 +47,6 @@ def list_placements(
         .all()
     )
 
-    data = [
-        enrich_placement_kpis(record, campaign_name)
-        for record, campaign_name in results
-    ]
+    data = [enrich_placement_kpis(record, campaign_name) for record, campaign_name in results]
 
     return {"data": data, "total": total, "page": page, "page_size": page_size}

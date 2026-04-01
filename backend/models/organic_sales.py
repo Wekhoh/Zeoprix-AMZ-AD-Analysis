@@ -9,8 +9,6 @@ class OrganicSales(Base, TimestampMixin):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     date = Column(String, nullable=False, unique=True)  # YYYY-MM-DD
-    total_sales = Column(
-        Float, nullable=False, default=0.0
-    )  # Total sales (organic + ad)
+    total_sales = Column(Float, nullable=False, default=0.0)  # Total sales (organic + ad)
     total_orders = Column(Integer, nullable=False, default=0)
     notes = Column(String)
