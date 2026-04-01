@@ -68,15 +68,15 @@ export default function CampaignDetail() {
 		Promise.all([
 			api.get<CampaignDetailType>(`/campaigns/${id}`),
 			api.get<DailyTrend[]>(`/summaries/by-date?campaign_id=${id}`),
-			api.get<PlacementRecord[]>(`/placements?campaign_id=${id}`),
-			api.get<OperationLog[]>(`/operation-logs?campaign_id=${id}`),
+			api.get(`/placements?campaign_id=${id}`),
+			api.get(`/operation-logs?campaign_id=${id}`),
 			api.get(`/notes?campaign_id=${id}`),
 		])
 			.then(([campRes, trendRes, placeRes, logRes, noteRes]) => {
 				setCampaign(campRes.data);
 				setTrends(trendRes.data);
-				setPlacements(placeRes.data);
-				setLogs(logRes.data);
+				setPlacements(placeRes.data?.data ?? placeRes.data);
+				setLogs(logRes.data?.data ?? logRes.data);
 				setNotes(noteRes.data);
 			})
 			.finally(() => setLoading(false));
