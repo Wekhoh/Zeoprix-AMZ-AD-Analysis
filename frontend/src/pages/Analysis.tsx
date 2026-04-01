@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+	Alert,
 	Card,
 	DatePicker,
 	Button,
@@ -214,6 +215,13 @@ export default function Analysis() {
 					</Col>
 				</Row>
 			</Card>
+
+			<Alert
+				type="info"
+				showIcon
+				style={{ marginBottom: 24 }}
+				message="归因窗口提示：SP 广告使用 7 天归因窗口，SB/SD 使用 14 天。最近 7 天的数据可能尚未完全归因，建议分析 7 天前的完整数据。"
+			/>
 
 			{result ? (
 				<Card title="对比结果">

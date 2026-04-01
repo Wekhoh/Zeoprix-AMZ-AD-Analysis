@@ -113,6 +113,18 @@ export default function CampaignDetail() {
 				? "red"
 				: "default";
 
+	const ATTRIBUTION_WINDOW_MAP: Record<string, number> = {
+		SP: 7,
+		SB: 14,
+		SD: 14,
+		SBV: 14,
+		DSP: 14,
+	};
+	const attributionDays = ATTRIBUTION_WINDOW_MAP[campaign.ad_type] ?? 7;
+	const isDynamicUpDown =
+		campaign.bidding_strategy?.includes("Dynamic") &&
+		campaign.bidding_strategy?.includes("up and down");
+
 	/* ---------- Section C: Daily Trend Chart ---------- */
 	const trendOption = {
 		tooltip: { trigger: "axis" as const },
@@ -326,9 +338,11 @@ export default function CampaignDetail() {
 				>
 					<Text>类型: {campaign.ad_type}</Text>
 					<Text>竞价策略: {campaign.bidding_strategy}</Text>
+					{isDynamicUpDown && <Tag color="orange">竞价可翻倍</Tag>}
 					{campaign.base_bid != null && (
 						<Text>基础出价: ${campaign.base_bid}</Text>
 					)}
+					<Text>归因窗口: {attributionDays} 天</Text>
 					{campaign.portfolio && <Text>组合: {campaign.portfolio}</Text>}
 					{campaign.first_date && campaign.last_date && (
 						<Text>

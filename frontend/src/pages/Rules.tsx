@@ -68,6 +68,10 @@ const ACTION_LABELS: Record<string, string> = {
 	suggest_bid_increase: "提高竞价",
 	suggest_bid_decrease: "降低竞价",
 	suggest_budget_increase: "增加预算",
+	diagnose_zero_spend: "诊断零花费",
+	flag_budget_risk: "预算风险",
+	attribution_reminder: "归因提醒",
+	negative_buffer_reminder: "否定词生效",
 };
 
 const ACTION_COLORS: Record<string, string> = {
@@ -76,6 +80,10 @@ const ACTION_COLORS: Record<string, string> = {
 	suggest_bid_increase: "green",
 	suggest_bid_decrease: "blue",
 	suggest_budget_increase: "cyan",
+	diagnose_zero_spend: "volcano",
+	flag_budget_risk: "gold",
+	attribution_reminder: "geekblue",
+	negative_buffer_reminder: "purple",
 };
 
 function formatCondition(rule: RuleItem): string {
@@ -244,7 +252,36 @@ export default function Rules() {
 						自动化规则
 						<PageHelp
 							title="自动化规则帮助"
-							content="自动化规则根据您设定的条件监控广告表现。当条件触发时，系统会显示建议操作。点击「运行全部规则」手动评估。"
+							content={
+								<div>
+									<p>
+										自动化规则根据您设定的条件监控广告表现。当条件触发时，系统会显示建议操作。点击「运行全部规则」手动评估。
+									</p>
+									<p style={{ fontWeight: 600, marginTop: 12 }}>
+										竞价策略说明：
+									</p>
+									<ul style={{ paddingLeft: 20 }}>
+										<li>
+											<strong>固定竞价 (Fixed bids)</strong>
+											：出价不会自动调整。适合严格控制 CPC 的场景。
+										</li>
+										<li>
+											<strong>动态竞价 - 仅降低 (Down only)</strong>
+											：转化可能性低时自动降低出价。最安全的动态策略。
+										</li>
+										<li>
+											<strong>动态竞价 - 提高和降低 (Up and down)</strong>
+											：高转化时出价最高可翻倍（2x），低转化时降至 0。CPC
+											波动最大。
+										</li>
+									</ul>
+									<p style={{ fontWeight: 600, marginTop: 12 }}>广告位调整：</p>
+									<p>
+										搜索顶部和商品页面可设置 0-900%
+										的竞价调整，与动态竞价叠加计算。
+									</p>
+								</div>
+							}
 						/>
 					</span>
 				}
@@ -394,6 +431,18 @@ export default function Rules() {
 							</Select.Option>
 							<Select.Option value="suggest_budget_increase">
 								建议增加预算
+							</Select.Option>
+							<Select.Option value="diagnose_zero_spend">
+								诊断零花费原因
+							</Select.Option>
+							<Select.Option value="flag_budget_risk">
+								预算耗尽风险
+							</Select.Option>
+							<Select.Option value="attribution_reminder">
+								归因窗口提醒
+							</Select.Option>
+							<Select.Option value="negative_buffer_reminder">
+								否定词生效提醒
 							</Select.Option>
 						</Select>
 					</Form.Item>

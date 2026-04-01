@@ -8,6 +8,12 @@ from sqlalchemy.orm import Session
 
 from backend.models import Campaign, PlacementRecord
 from backend.services.kpi_calculator import calc_roas, calc_acos
+from backend.utils.amazon_rules import (
+    get_attribution_window,
+    calc_max_possible_cpc,
+    get_bidding_strategy_advice,
+    NEGATIVE_KEYWORD_BUFFER_HOURS,
+)
 
 
 def generate_suggestions(db: Session) -> list[dict]:
@@ -21,6 +27,8 @@ def generate_suggestions(db: Session) -> list[dict]:
             Campaign.name,
             Campaign.status,
             Campaign.base_bid,
+            Campaign.ad_type,
+            Campaign.bidding_strategy,
             func.sum(PlacementRecord.impressions).label("imp"),
             func.sum(PlacementRecord.clicks).label("clk"),
             func.sum(PlacementRecord.spend).label("spd"),
@@ -36,20 +44,26 @@ def generate_suggestions(db: Session) -> list[dict]:
 
     for stat in campaign_stats:
         cid, name, status, base_bid = stat[0], stat[1], stat[2], stat[3]
+        ad_type, bidding_strategy = stat[4], stat[5]
         imp, clk, spd, orders, sales = (
-            stat[4] or 0,
-            stat[5] or 0,
-            stat[6] or 0.0,
+            stat[6] or 0,
             stat[7] or 0,
             stat[8] or 0.0,
+            stat[9] or 0,
+            stat[10] or 0.0,
         )
-        first_date, last_date = stat[9], stat[10]
+        first_date, last_date = stat[11], stat[12]
 
         roas = calc_roas(sales, spd)
         acos = calc_acos(spd, sales)
 
         # 规则 1: 高 ACOS 预警（ACOS > 50%）
         if acos and acos > 0.50:
+            strategy = bidding_strategy or "Fixed bids"
+            strategy_advice = get_bidding_strategy_advice(strategy, acos, roas)
+            action_text = "建议降低竞价 20-30% 或暂停表现最差的展示位置"
+            if strategy_advice:
+                action_text = f"{action_text}。{strategy_advice}"
             suggestions.append(
                 {
                     "type": "high_acos",
@@ -58,8 +72,8 @@ def generate_suggestions(db: Session) -> list[dict]:
                     "campaign_id": cid,
                     "campaign_name": name,
                     "title": f"ACOS 过高: {acos * 100:.1f}%",
-                    "description": f"广告活动 ACOS 为 {acos * 100:.1f}%，远超盈利阈值。每花 $1 广告费只带来 ${1 / acos:.2f} 销售额。",
-                    "action": "建议降低竞价 20-30% 或暂停表现最差的展示位置",
+                    "description": f"广告活动 ACOS 为 {acos * 100:.1f}%，远超盈利阈值。每花 $1 广告费只带来 ${1 / acos:.2f} 销售额。（竞价策略: {strategy}）",
+                    "action": action_text,
                     "metric": {
                         "acos": round(acos, 4),
                         "spend": round(spd, 2),
@@ -130,6 +144,8 @@ def generate_suggestions(db: Session) -> list[dict]:
         if clk > 0 and base_bid:
             actual_cpc = spd / clk
             if actual_cpc > base_bid * 1.5:
+                strategy = bidding_strategy or "Fixed bids"
+                max_cpc = calc_max_possible_cpc(base_bid, 0, strategy)
                 suggestions.append(
                     {
                         "type": "high_cpc",
@@ -138,11 +154,39 @@ def generate_suggestions(db: Session) -> list[dict]:
                         "campaign_id": cid,
                         "campaign_name": name,
                         "title": f"CPC ${actual_cpc:.2f} 远超基础出价 ${base_bid}",
-                        "description": f"实际 CPC (${actual_cpc:.2f}) 是基础出价 (${base_bid}) 的 {actual_cpc / base_bid:.1f} 倍，竞争可能过于激烈。",
+                        "description": f"实际 CPC (${actual_cpc:.2f}) 是基础出价 (${base_bid}) 的 {actual_cpc / base_bid:.1f} 倍，竞争可能过于激烈。理论最高 CPC（无广告位调整）: ${max_cpc}",
                         "action": "考虑降低搜索顶部的竞价调整百分比",
-                        "metric": {"cpc": round(actual_cpc, 2), "base_bid": base_bid},
+                        "metric": {
+                            "cpc": round(actual_cpc, 2),
+                            "base_bid": base_bid,
+                            "max_cpc": max_cpc,
+                        },
                     }
                 )
+
+        # 规则 7: 投放中但零花费/曝光（可能丢失 Buy Box）
+        if status != "Paused" and spd == 0 and imp == 0:
+            suggestions.append(
+                {
+                    "type": "zero_spend",
+                    "severity": "critical",
+                    "priority": 0,
+                    "campaign_id": cid,
+                    "campaign_name": name,
+                    "title": "投放中但无花费/曝光",
+                    "description": "广告活动处于投放状态但没有任何花费和曝光。",
+                    "action": (
+                        "常见原因：1) 失去 Buy Box 资格 2) 出价过低 "
+                        "3) 关键词全部被否定 4) 商品下架或无库存。"
+                        "请检查 Seller Central 中的商品状态。"
+                    ),
+                    "metric": {
+                        "status": status,
+                        "impressions": imp,
+                        "spend": round(spd, 2),
+                    },
+                }
+            )
 
     # 获取展示位置级别的洞察
     placement_stats = (

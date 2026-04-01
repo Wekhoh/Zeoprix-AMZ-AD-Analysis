@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
+	Alert,
 	Card,
 	Upload,
 	message,
@@ -311,7 +312,43 @@ export default function SearchTerms() {
 				<span style={{ fontSize: 16, fontWeight: 600 }}>搜索词分析</span>
 				<PageHelp
 					title="搜索词分析帮助"
-					content="搜索词按 4-Bucket 框架分类：Winners（高转化词）、Potential（有潜力）、Money Pits（浪费预算）、Low Data（数据不足）。"
+					content={
+						<div>
+							<p>
+								搜索词按 4-Bucket
+								框架分类：Winners（高转化词）、Potential（有潜力）、Money
+								Pits（浪费预算）、Low Data（数据不足）。
+							</p>
+							<p style={{ fontWeight: 600, marginTop: 12 }}>
+								关键词匹配类型说明：
+							</p>
+							<ul style={{ paddingLeft: 20 }}>
+								<li>
+									<strong>Broad（广泛匹配）</strong>
+									：词序不限，匹配同义词。关键词可能完全不出现在搜索词中。
+								</li>
+								<li>
+									<strong>Phrase（短语匹配）</strong>
+									：必须保持关键词词序。允许前后缀。
+								</li>
+								<li>
+									<strong>Exact（精确匹配）</strong>
+									：精确匹配，但也匹配近义词和近似变体。
+								</li>
+								<li>
+									<strong>Negative Phrase（否定短语）</strong>
+									：包含该短语即排除。最多 4 词，80 字符。
+								</li>
+								<li>
+									<strong>Negative Exact（否定精确）</strong>
+									：完全一致才排除。最多 10 词，80 字符。
+								</li>
+							</ul>
+							<p style={{ marginTop: 12, color: "#faad14" }}>
+								否定关键词需 72 小时生效，否定 ASIN 需 96 小时。
+							</p>
+						</div>
+					}
 				/>
 			</div>
 			{/* Section A: CSV Upload */}
@@ -402,6 +439,14 @@ export default function SearchTerms() {
 						onChange={setActiveTab}
 						items={tabItems}
 					/>
+					{activeTab === "money_pits" && (
+						<Alert
+							type="info"
+							showIcon
+							style={{ marginTop: 16 }}
+							message="添加否定关键词后需要 72 小时才能生效（否定 ASIN 需 96 小时）。请耐心等待效果显现。"
+						/>
+					)}
 				</Card>
 			)}
 

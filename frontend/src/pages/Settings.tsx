@@ -16,6 +16,7 @@ import {
 	Select,
 } from "antd";
 import {
+	CheckCircleOutlined,
 	CloudUploadOutlined,
 	DeleteOutlined,
 	DatabaseOutlined,
@@ -475,6 +476,46 @@ export default function Settings() {
 							/>
 						</Card>
 					))}
+					<Card title="广告资格检查清单" size="small" style={{ marginTop: 24 }}>
+						{[
+							{
+								item: "专业卖家账户",
+								description: "必须是 Professional Seller 账户",
+							},
+							{ item: "账户信誉良好", description: "无严重违规或欠款" },
+							{
+								item: "Buy Box 资格",
+								description: "受定价、库存、配送速度、客户评价影响",
+							},
+							{ item: "商品有库存", description: "FBA 或 FBM 库存 > 0" },
+							{
+								item: "Listing 标题合规",
+								description: "<= 200 字符，无特殊字符堆砌",
+							},
+							{ item: "无违规标记", description: "商品未被限制或下架" },
+						].map((rule) => (
+							<div
+								key={rule.item}
+								style={{
+									display: "flex",
+									alignItems: "flex-start",
+									gap: 8,
+									padding: "8px 0",
+									borderBottom: "1px solid rgba(128,128,128,0.15)",
+								}}
+							>
+								<CheckCircleOutlined
+									style={{ color: "#52c41a", marginTop: 3 }}
+								/>
+								<div>
+									<div style={{ fontWeight: 500 }}>{rule.item}</div>
+									<div style={{ fontSize: 12, opacity: 0.7 }}>
+										{rule.description}
+									</div>
+								</div>
+							</div>
+						))}
+					</Card>
 				</div>
 			),
 		},

@@ -27,6 +27,10 @@ ACTION_LABELS = {
     "suggest_bid_increase": "建议提高竞价",
     "suggest_bid_decrease": "建议降低竞价",
     "suggest_budget_increase": "建议增加预算",
+    "diagnose_zero_spend": "诊断零花费原因",
+    "flag_budget_risk": "预算耗尽风险",
+    "attribution_reminder": "归因窗口提醒",
+    "negative_buffer_reminder": "否定词生效提醒",
 }
 
 
@@ -184,10 +188,8 @@ def get_rule_results(db: Session, rule_id: int) -> list[dict]:
 
 
 def seed_default_rules(db: Session) -> int:
-    """首次启动时播种默认规则，返回创建数量"""
-    existing = db.query(Rule).count()
-    if existing > 0:
-        return 0
+    """首次启动时播种默认规则，返回创建数量（按 name 去重）"""
+    existing_names = {r.name for r in db.query(Rule.name).all()}
 
     defaults = [
         Rule(
@@ -223,9 +225,57 @@ def seed_default_rules(db: Session) -> int:
             action_type="suggest_budget_increase",
             is_active=1,
         ),
+        Rule(
+            name="投放中无花费诊断",
+            description="广告活动投放中但连续 3 天无花费，可能是 Buy Box 丢失或出价过低",
+            condition_field="spend",
+            condition_operator="==",
+            condition_value=0,
+            condition_min_data=0,
+            period_days=3,
+            action_type="diagnose_zero_spend",
+            is_active=1,
+        ),
+        Rule(
+            name="预算耗尽风险",
+            description="花费超过预算 80%，注意亚马逊允许单日超支最多 100%",
+            condition_field="spend",
+            condition_operator=">",
+            condition_value=0.8,
+            condition_min_data=0,
+            period_days=1,
+            action_type="flag_budget_risk",
+            is_active=1,
+        ),
+        Rule(
+            name="归因窗口提醒",
+            description="最近 7 天的 SP 数据可能尚未完全归因，建议等待完整数据再做决策",
+            condition_field="orders",
+            condition_operator=">=",
+            condition_value=0,
+            condition_min_data=0,
+            period_days=7,
+            action_type="attribution_reminder",
+            is_active=1,
+        ),
+        Rule(
+            name="否定词生效提醒",
+            description="否定关键词需 72 小时生效，否定 ASIN 需 96 小时",
+            condition_field="clicks",
+            condition_operator=">",
+            condition_value=20,
+            condition_min_data=20,
+            period_days=3,
+            action_type="negative_buffer_reminder",
+            is_active=1,
+        ),
     ]
 
+    created = 0
     for rule in defaults:
-        db.add(rule)
-    db.commit()
-    return len(defaults)
+        if rule.name not in existing_names:
+            db.add(rule)
+            created += 1
+    if created > 0:
+        db.commit()
+    return created

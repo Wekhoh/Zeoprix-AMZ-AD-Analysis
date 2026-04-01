@@ -180,7 +180,25 @@ export default function Dashboard() {
 				<FilterToolbar showCampaignFilter={false} />
 				<PageHelp
 					title="仪表盘帮助"
-					content="仪表盘显示您所有广告活动的汇总 KPI。使用顶部日期筛选器查看特定时间段的数据。预警区域会提示需要关注的广告活动。"
+					content={
+						<div>
+							<p>仪表盘显示所有广告活动的汇总 KPI。</p>
+							<p style={{ fontWeight: 600, marginTop: 12 }}>KPI 说明：</p>
+							<ul style={{ paddingLeft: 20 }}>
+								<li>ACOS = 花费 / 销售额（越低越好）</li>
+								<li>ROAS = 销售额 / 花费（越高越好）</li>
+								<li>TACoS = 广告花费 / 总销售额（含有机）</li>
+							</ul>
+							<p style={{ fontWeight: 600, marginTop: 12 }}>归因窗口：</p>
+							<p>
+								SP 广告 7 天，SB/SD 广告 14 天。数据会在归因窗口内回溯更新。
+							</p>
+							<p style={{ fontWeight: 600, marginTop: 12 }}>预算：</p>
+							<p>
+								亚马逊允许单日超支最多 100%，月度总花费受「日预算 x 天数」保护。
+							</p>
+						</div>
+					}
 				/>
 			</div>
 
