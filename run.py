@@ -3,14 +3,15 @@
 用法: python run.py
 """
 
+import os
 import subprocess
 import sys
 import webbrowser
 import time
 from pathlib import Path
 
-PORT = 8000
-HOST = "127.0.0.1"
+PORT = int(os.environ.get("PORT", "8000"))
+HOST = os.environ.get("HOST", "127.0.0.1")
 
 
 def main():

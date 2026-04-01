@@ -1,0 +1,14 @@
+data/
+.env
+.git/
+__pycache__/
+*.pyc
+node_modules/
+frontend/node_modules/
+frontend/dist/
+.ruff_cache/
+.pytest_cache/
+tests/
+*.md
+.vscode/
+.idea/
