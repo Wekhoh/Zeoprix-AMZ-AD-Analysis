@@ -1,0 +1,33 @@
+# Data (user-specific, contains business data)
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Environment
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+htmlcov/
+*.egg-info/
+
+# Node
+node_modules/
+frontend/dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Temporary
+_tmp_frontend/
