@@ -13,7 +13,12 @@ from backend.models import (
     OrganicSales,
     ImportHistory,
 )
-from backend.services.backup_service import create_backup, list_backups, delete_backup
+from backend.services.backup_service import (
+    create_backup,
+    list_backups,
+    delete_backup,
+    restore_backup,
+)
 
 router = APIRouter()
 
@@ -59,6 +64,15 @@ def delete_backup_endpoint(backup_id: int, db: Session = Depends(get_db)):
     if not delete_backup(db, backup_id):
         raise HTTPException(status_code=404, detail="备份不存在")
     return {"success": True}
+
+
+@router.post("/backups/{backup_id}/restore")
+def restore_backup_endpoint(backup_id: int, db: Session = Depends(get_db)):
+    """Restore database from a backup"""
+    result = restore_backup(db, backup_id)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
 
 
 # === 产品管理 ===

@@ -72,6 +72,42 @@ def delete_backup(db: Session, backup_id: int) -> bool:
     return True
 
 
+def verify_backup(backup_path: str) -> dict:
+    """Verify backup integrity using PRAGMA integrity_check"""
+    import sqlite3
+
+    conn = sqlite3.connect(backup_path)
+    result = conn.execute("PRAGMA integrity_check").fetchone()
+    conn.close()
+    ok = result[0] == "ok"
+    return {"path": backup_path, "integrity": result[0], "ok": ok}
+
+
+def restore_backup(db: Session, backup_id: int) -> dict:
+    """Restore from a backup: safety backup current, then copy backup over"""
+    record = db.query(Backup).filter_by(id=backup_id).first()
+    if not record:
+        return {"error": "Backup not found"}
+
+    backup_path = Path(record.file_path)
+    if not backup_path.exists():
+        return {"error": "Backup file missing"}
+
+    db_path = settings.DATA_DIR / "tracker.db"
+
+    # Safety backup before restore
+    safety = create_backup(db, backup_type="pre_restore")
+
+    # Close all connections, copy backup over
+    db.close()
+    shutil.copy2(backup_path, db_path)
+
+    return {
+        "restored_from": str(backup_path.name),
+        "safety_backup": safety.get("file_path", ""),
+    }
+
+
 def _cleanup_old_backups(db: Session):
     """保留最近 MAX_BACKUPS 个备份，清理更早的"""
     backups = db.query(Backup).order_by(Backup.created_at.desc()).all()

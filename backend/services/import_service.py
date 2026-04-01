@@ -167,6 +167,13 @@ def _upsert_campaign_daily(db: Session, campaign_id: int, data: dict) -> str:
 
 async def process_placement_csv_upload(db: Session, files: list[UploadFile]) -> ImportResult:
     """处理展示位置 CSV 上传"""
+    try:
+        from backend.services.backup_service import create_backup
+
+        create_backup(db, backup_type="pre_import")
+    except Exception as exc:
+        logger.warning(f"Pre-import backup failed (non-fatal): {exc}")
+
     total_imported = 0
     total_updated = 0
     total_skipped = 0
@@ -327,6 +334,13 @@ async def preview_csv_upload(files: list[UploadFile]) -> dict:
 
 async def process_operation_log_upload(db: Session, files: list[UploadFile]) -> ImportResult:
     """处理操作日志 TXT 上传"""
+    try:
+        from backend.services.backup_service import create_backup
+
+        create_backup(db, backup_type="pre_import")
+    except Exception as exc:
+        logger.warning(f"Pre-import backup failed (non-fatal): {exc}")
+
     total_imported = 0
     total_skipped = 0
     details: list[ImportDetail] = []
