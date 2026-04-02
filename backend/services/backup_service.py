@@ -6,6 +6,7 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from backend.config import settings
+from backend.database import engine
 from backend.models.system import Backup
 
 
@@ -98,13 +99,15 @@ def restore_backup(db: Session, backup_id: int) -> dict:
     # Safety backup before restore
     safety = create_backup(db, backup_type="pre_restore")
 
-    # Close all connections, copy backup over
+    # Close session AND dispose engine pool to release all connections
     db.close()
+    engine.dispose()
     shutil.copy2(backup_path, db_path)
 
     return {
         "restored_from": str(backup_path.name),
         "safety_backup": safety.get("file_path", ""),
+        "note": "请重启应用以确保数据库连接刷新",
     }
 
 

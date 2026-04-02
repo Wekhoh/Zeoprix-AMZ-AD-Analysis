@@ -105,14 +105,16 @@ export default function Settings() {
 			api.get<OrganicSalesRecord[]>("/settings/organic-sales"),
 			api.get<BenchmarkCategory[]>("/benchmarks/categories"),
 			api.get<ImportHistoryItem[]>("/settings/import-history"),
-		]).then(([b, p, s, c, h]) => {
-			setBackups(b.data);
-			setProducts(p.data);
-			setOrganicSales(s.data);
-			setCategories(c.data);
-			setImportHistory(h.data);
-			setLoading(false);
-		});
+		])
+			.then(([b, p, s, c, h]) => {
+				setBackups(b.data);
+				setProducts(p.data);
+				setOrganicSales(s.data);
+				setCategories(c.data);
+				setImportHistory(h.data);
+			})
+			.catch(() => {})
+			.finally(() => setLoading(false));
 	};
 
 	useEffect(fetchData, []);

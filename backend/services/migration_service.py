@@ -363,8 +363,9 @@ async def migrate_excel_to_db(db: Session, file: UploadFile) -> ImportResult:
                     db.add(log_record)
                     db.flush()
                     counts["campaign_log"] += 1
-                except Exception:
+                except Exception as e:
                     db.rollback()
+                    logger.warning(f"Campaign log migration skipped: {e}")
 
             details.append(
                 ImportDetail(message=f"广告活动操作日志: 迁移 {counts['campaign_log']} 条")
@@ -422,8 +423,9 @@ async def migrate_excel_to_db(db: Session, file: UploadFile) -> ImportResult:
                     db.add(log_record)
                     db.flush()
                     counts["adgroup_log"] += 1
-                except Exception:
+                except Exception as e:
                     db.rollback()
+                    logger.warning(f"Ad group log migration skipped: {e}")
 
             details.append(ImportDetail(message=f"广告组操作日志: 迁移 {counts['adgroup_log']} 条"))
 

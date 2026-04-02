@@ -28,10 +28,13 @@ export default function Campaigns() {
 	const navigate = useNavigate();
 
 	useEffect(() => {
-		api.get("/campaigns").then((res) => {
-			setCampaigns(res.data);
-			setLoading(false);
-		});
+		api
+			.get("/campaigns")
+			.then((res) => {
+				setCampaigns(res.data);
+			})
+			.catch(() => {})
+			.finally(() => setLoading(false));
 	}, []);
 
 	const filteredCampaigns = useMemo(() => {

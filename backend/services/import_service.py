@@ -3,15 +3,15 @@
 整合: CSV 解析 → 去重检测 → 数据库写入 → 汇总更新
 """
 
-import math
 from collections import Counter
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
 
 from backend.logging_config import get_logger
 
 logger = get_logger("import")
+
+MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
 
 from backend.models import (
     Campaign,
@@ -182,6 +182,11 @@ async def process_placement_csv_upload(db: Session, files: list[UploadFile]) -> 
     for file in files:
         try:
             raw = await file.read()
+            if len(raw) > MAX_UPLOAD_SIZE:
+                details.append(
+                    ImportDetail(message=f"{file.filename}: 文件超过 50MB 限制", level="error")
+                )
+                continue
             # 尝试多种编码
             for encoding in ["utf-8-sig", "utf-8", "gbk", "gb2312"]:
                 try:
@@ -348,6 +353,11 @@ async def process_operation_log_upload(db: Session, files: list[UploadFile]) -> 
     for file in files:
         try:
             raw = await file.read()
+            if len(raw) > MAX_UPLOAD_SIZE:
+                details.append(
+                    ImportDetail(message=f"{file.filename}: 文件超过 50MB 限制", level="error")
+                )
+                continue
             content = raw.decode("utf-8")
             filename = file.filename or "unknown.txt"
 

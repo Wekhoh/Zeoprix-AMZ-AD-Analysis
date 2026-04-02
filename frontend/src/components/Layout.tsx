@@ -35,21 +35,51 @@ function getInitialCollapsed(): boolean {
 }
 
 const menuItems = [
-	{ key: "/", icon: <DashboardOutlined />, label: "首页仪表盘" },
-	{ key: "/import", icon: <UploadOutlined />, label: "数据导入" },
 	{
-		key: "/campaigns",
-		icon: <FundProjectionScreenOutlined />,
-		label: "广告活动",
+		type: "group" as const,
+		label: "数据管理",
+		children: [
+			{ key: "/", icon: <DashboardOutlined />, label: "首页仪表盘" },
+			{ key: "/import", icon: <UploadOutlined />, label: "数据导入" },
+			{
+				key: "/campaigns",
+				icon: <FundProjectionScreenOutlined />,
+				label: "广告活动",
+			},
+			{ key: "/placements", icon: <AppstoreOutlined />, label: "展示位置" },
+			{
+				key: "/operation-logs",
+				icon: <FileTextOutlined />,
+				label: "操作日志",
+			},
+		],
 	},
-	{ key: "/placements", icon: <AppstoreOutlined />, label: "展示位置" },
-	{ key: "/operation-logs", icon: <FileTextOutlined />, label: "操作日志" },
-	{ key: "/summaries", icon: <BarChartOutlined />, label: "数据汇总" },
-	{ key: "/analysis", icon: <SwapOutlined />, label: "对比分析" },
-	{ key: "/search-terms", icon: <SearchOutlined />, label: "搜索词分析" },
-	{ key: "/suggestions", icon: <BulbOutlined />, label: "智能建议" },
-	{ key: "/rules", icon: <ThunderboltOutlined />, label: "自动化规则" },
-	{ key: "/settings", icon: <SettingOutlined />, label: "系统设置" },
+	{
+		type: "group" as const,
+		label: "分析洞察",
+		children: [
+			{ key: "/summaries", icon: <BarChartOutlined />, label: "数据汇总" },
+			{ key: "/analysis", icon: <SwapOutlined />, label: "对比分析" },
+			{
+				key: "/search-terms",
+				icon: <SearchOutlined />,
+				label: "搜索词分析",
+			},
+			{ key: "/suggestions", icon: <BulbOutlined />, label: "智能建议" },
+		],
+	},
+	{
+		type: "group" as const,
+		label: "自动化与设置",
+		children: [
+			{
+				key: "/rules",
+				icon: <ThunderboltOutlined />,
+				label: "自动化规则",
+			},
+			{ key: "/settings", icon: <SettingOutlined />, label: "系统设置" },
+		],
+	},
 ];
 
 const THEME_CYCLE: ThemeMode[] = ["light", "dark", "system"];

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Alert, Card, Col, Progress, Row, Statistic, Spin, Table } from "antd";
 import {
@@ -9,6 +9,8 @@ import {
 	CalculatorOutlined,
 	AimOutlined,
 	PieChartOutlined,
+	ArrowUpOutlined,
+	ArrowDownOutlined,
 } from "@ant-design/icons";
 import ReactECharts from "echarts-for-react";
 import { withTheme, CHART_COLORS } from "../utils/chartTheme";
@@ -22,11 +24,67 @@ import OnboardingGuide, {
 import { useFilterParams } from "../hooks/useFilterParams";
 import { useTheme } from "../hooks/useTheme";
 import type {
+	DailyTrend,
 	DashboardAlert,
 	DashboardData,
 	TopCampaign,
 	BenchmarkResult,
 } from "../types/api";
+
+function calcWowDeltas(trend: DailyTrend[]) {
+	if (trend.length < 8) return null;
+	const sorted = [...trend].sort(
+		(a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+	);
+	const last7 = sorted.slice(-7);
+	const prev7 = sorted.slice(-14, -7);
+	if (prev7.length < 7) return null;
+
+	const sum = (arr: DailyTrend[], key: keyof DailyTrend) =>
+		arr.reduce((s, d) => s + ((d[key] as number) || 0), 0);
+
+	const calc = (curr: number, prev: number) =>
+		prev > 0 ? ((curr - prev) / prev) * 100 : null;
+
+	const currSpend = sum(last7, "spend");
+	const prevSpend = sum(prev7, "spend");
+	const currOrders = sum(last7, "orders");
+	const prevOrders = sum(prev7, "orders");
+	const currSales = sum(last7, "sales");
+	const prevSales = sum(prev7, "sales");
+
+	const currRoas = currSpend > 0 ? currSales / currSpend : 0;
+	const prevRoas = prevSpend > 0 ? prevSales / prevSpend : 0;
+	const currAcos = currSales > 0 ? currSpend / currSales : 0;
+	const prevAcos = prevSales > 0 ? prevSpend / prevSales : 0;
+
+	return {
+		spend: calc(currSpend, prevSpend),
+		orders: calc(currOrders, prevOrders),
+		roas: calc(currRoas, prevRoas),
+		acos: calc(currAcos, prevAcos),
+	};
+}
+
+/** For ACOS, down is good. For others, up is good. */
+function WowIndicator({
+	delta,
+	invertColor,
+}: {
+	delta: number | null;
+	invertColor?: boolean;
+}) {
+	if (delta === null) return null;
+	const isUp = delta > 0;
+	const isGood = invertColor ? !isUp : isUp;
+	const color = isGood ? "#52c41a" : "#ff4d4f";
+	const icon = isUp ? <ArrowUpOutlined /> : <ArrowDownOutlined />;
+	return (
+		<div style={{ fontSize: 12, color, marginTop: 4 }}>
+			{icon} {Math.abs(delta).toFixed(1)}% vs 上周
+		</div>
+	);
+}
 
 export default function Dashboard() {
 	const [data, setData] = useState<DashboardData | null>(null);
@@ -80,6 +138,11 @@ export default function Dashboard() {
 			data.kpi.orders === 0 &&
 			data.kpi.impressions === 0 &&
 			(data.top_campaigns?.length ?? 0) === 0);
+
+	const wowDeltas = useMemo(
+		() => (data ? calcWowDeltas(data.daily_trend) : null),
+		[data],
+	);
 
 	// Show onboarding when no data and not dismissed (must be before any conditional return)
 	useEffect(() => {
@@ -212,6 +275,7 @@ export default function Dashboard() {
 							prefix={<DollarOutlined />}
 							suffix="USD"
 						/>
+						{wowDeltas && <WowIndicator delta={wowDeltas.spend} />}
 					</Card>
 				</Col>
 				<Col span={data.tacos?.has_data ? 4 : 6}>
@@ -221,6 +285,7 @@ export default function Dashboard() {
 							value={data.kpi.orders}
 							prefix={<ShoppingCartOutlined />}
 						/>
+						{wowDeltas && <WowIndicator delta={wowDeltas.orders} />}
 					</Card>
 				</Col>
 				<Col span={data.tacos?.has_data ? 5 : 6}>
@@ -232,6 +297,7 @@ export default function Dashboard() {
 							prefix={<PercentageOutlined />}
 							suffix="%"
 						/>
+						{wowDeltas && <WowIndicator delta={wowDeltas.acos} invertColor />}
 					</Card>
 				</Col>
 				<Col span={data.tacos?.has_data ? 5 : 6}>
@@ -242,6 +308,7 @@ export default function Dashboard() {
 							precision={2}
 							prefix={<RiseOutlined />}
 						/>
+						{wowDeltas && <WowIndicator delta={wowDeltas.roas} />}
 					</Card>
 				</Col>
 				{data.tacos?.has_data && (
