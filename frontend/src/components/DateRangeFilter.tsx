@@ -14,6 +14,7 @@ const PRESETS = [
 	{ label: "最近7天", days: 7 },
 	{ label: "最近14天", days: 14 },
 	{ label: "最近30天", days: 30 },
+	{ label: "归因安全", days: -8 },
 ] as const;
 
 export default function DateRangeFilter({
@@ -35,9 +36,16 @@ export default function DateRangeFilter({
 	};
 
 	const handlePreset = (days: number) => {
-		const to = dayjs();
-		const from = dayjs().subtract(days - 1, "day");
-		onChange(from, to);
+		if (days < 0) {
+			// Attribution-safe: 30 days of data ending 8 days ago
+			const to = dayjs().subtract(8, "day");
+			const from = to.subtract(29, "day");
+			onChange(from, to);
+		} else {
+			const to = dayjs();
+			const from = dayjs().subtract(days - 1, "day");
+			onChange(from, to);
+		}
 	};
 
 	const handleClearAll = () => {

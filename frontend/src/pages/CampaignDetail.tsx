@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
 	Card,
@@ -28,6 +28,7 @@ import {
 } from "@ant-design/icons";
 import ReactECharts from "echarts-for-react";
 import { withTheme } from "../utils/chartTheme";
+import { calcWowDeltas, WowIndicator } from "../utils/wowDeltas";
 import api from "../api/client";
 import { useTheme } from "../hooks/useTheme";
 import type {
@@ -56,6 +57,20 @@ export default function CampaignDetail() {
 		}[]
 	>([]);
 	const [newNote, setNewNote] = useState("");
+	const [placementSummary, setPlacementSummary] = useState<
+		{
+			placement_type: string;
+			impressions: number;
+			clicks: number;
+			spend: number;
+			orders: number;
+			sales: number;
+			ctr: number | null;
+			cpc: number | null;
+			roas: number | null;
+			acos: number | null;
+		}[]
+	>([]);
 
 	const fetchNotes = () => {
 		if (!id) return;
@@ -71,13 +86,15 @@ export default function CampaignDetail() {
 			api.get(`/placements?campaign_id=${id}`),
 			api.get(`/operation-logs?campaign_id=${id}`),
 			api.get(`/notes?campaign_id=${id}`),
+			api.get(`/campaigns/${id}/placement-summary`),
 		])
-			.then(([campRes, trendRes, placeRes, logRes, noteRes]) => {
+			.then(([campRes, trendRes, placeRes, logRes, noteRes, pSumRes]) => {
 				setCampaign(campRes.data);
 				setTrends(trendRes.data);
 				setPlacements(placeRes.data?.data ?? placeRes.data);
 				setLogs(logRes.data?.data ?? logRes.data);
 				setNotes(noteRes.data);
+				setPlacementSummary(pSumRes.data);
 			})
 			.finally(() => setLoading(false));
 	}, [id]);
@@ -105,6 +122,48 @@ export default function CampaignDetail() {
 			<Spin size="large" style={{ display: "block", margin: "100px auto" }} />
 		);
 	}
+
+	const wowDeltas = useMemo(
+		() => (trends.length > 0 ? calcWowDeltas(trends) : null),
+		[trends],
+	);
+
+	// Build markLine data from operation logs (bid/budget/status changes)
+	const changeMarkLines = useMemo(() => {
+		const trendDates = new Set(trends.map((t) => t.date));
+		const marks: {
+			xAxis: string;
+			label: { formatter: string };
+			lineStyle: { color: string };
+		}[] = [];
+		const seen = new Set<string>();
+		for (const log of logs) {
+			const key = `${log.date}-${log.change_type}`;
+			if (seen.has(key) || !trendDates.has(log.date)) continue;
+			seen.add(key);
+			const ct = (log.change_type || "").toLowerCase();
+			let color = "#9CA3AF";
+			let label = "";
+			if (ct.includes("bid") || ct.includes("竞价")) {
+				color = "#3B82F6";
+				label = "竞价";
+			} else if (ct.includes("budget") || ct.includes("预算")) {
+				color = "#10B981";
+				label = "预算";
+			} else if (ct.includes("status") || ct.includes("状态")) {
+				color = "#EF4444";
+				label = "状态";
+			} else {
+				continue;
+			}
+			marks.push({
+				xAxis: log.date,
+				label: { formatter: label },
+				lineStyle: { color },
+			});
+		}
+		return marks;
+	}, [logs, trends]);
 
 	const statusColor =
 		campaign.status === "Delivering"
@@ -143,6 +202,14 @@ export default function CampaignDetail() {
 				type: "line",
 				data: trends.map((d) => d.spend),
 				smooth: true,
+				markLine:
+					changeMarkLines.length > 0
+						? {
+								symbol: "none",
+								label: { fontSize: 10, position: "start" },
+								data: changeMarkLines,
+							}
+						: undefined,
 			},
 			{
 				name: "订单",
@@ -225,10 +292,105 @@ export default function CampaignDetail() {
 		{ title: "层级", dataIndex: "level_type", key: "level", width: 90 },
 	];
 
+	const fmtPct = (v: number | null) =>
+		v != null ? `${(v * 100).toFixed(2)}%` : "-";
+	const fmtUsd = (v: number | null) => (v != null ? `$${v.toFixed(2)}` : "-");
+
+	const placementSummaryColumns = [
+		{
+			title: "展示位置",
+			dataIndex: "placement_type",
+			key: "type",
+			width: 180,
+		},
+		{
+			title: "曝光",
+			dataIndex: "impressions",
+			key: "imp",
+			render: (v: number) => v.toLocaleString(),
+		},
+		{
+			title: "点击",
+			dataIndex: "clicks",
+			key: "clk",
+			render: (v: number) => v.toLocaleString(),
+		},
+		{
+			title: "花费",
+			dataIndex: "spend",
+			key: "spend",
+			render: (v: number) => fmtUsd(v),
+		},
+		{
+			title: "订单",
+			dataIndex: "orders",
+			key: "ord",
+		},
+		{
+			title: "ROAS",
+			dataIndex: "roas",
+			key: "roas",
+			render: (v: number | null) => {
+				if (v == null) return "-";
+				return (
+					<span
+						style={{
+							color: v >= 3 ? "#52c41a" : v < 1 ? "#ff4d4f" : undefined,
+						}}
+					>
+						{v.toFixed(2)}
+					</span>
+				);
+			},
+		},
+		{
+			title: "ACOS",
+			dataIndex: "acos",
+			key: "acos",
+			render: (v: number | null) => {
+				if (v == null) return "-";
+				return (
+					<span
+						style={{
+							color: v > 0.5 ? "#ff4d4f" : v < 0.25 ? "#52c41a" : undefined,
+						}}
+					>
+						{fmtPct(v)}
+					</span>
+				);
+			},
+		},
+		{
+			title: "CTR",
+			dataIndex: "ctr",
+			key: "ctr",
+			render: (v: number | null) => fmtPct(v),
+		},
+		{
+			title: "CPC",
+			dataIndex: "cpc",
+			key: "cpc",
+			render: (v: number | null) => fmtUsd(v),
+		},
+	];
+
 	const tabItems = [
 		{
+			key: "placement-compare",
+			label: "展示位置对比",
+			children: (
+				<Table
+					columns={placementSummaryColumns}
+					dataSource={placementSummary}
+					rowKey="placement_type"
+					size="middle"
+					pagination={false}
+				/>
+			),
+		},
+		{
 			key: "placements",
-			label: "展示位置分布",
+			label: "展示位置明细",
 			children: (
 				<Table<PlacementRecord>
 					columns={placementColumns}
@@ -363,6 +525,7 @@ export default function CampaignDetail() {
 							prefix={<DollarOutlined />}
 							suffix="USD"
 						/>
+						{wowDeltas && <WowIndicator delta={wowDeltas.spend} />}
 					</Card>
 				</Col>
 				<Col span={6}>
@@ -372,6 +535,7 @@ export default function CampaignDetail() {
 							value={campaign.total_orders}
 							prefix={<ShoppingCartOutlined />}
 						/>
+						{wowDeltas && <WowIndicator delta={wowDeltas.orders} />}
 					</Card>
 				</Col>
 				<Col span={6}>
@@ -382,6 +546,7 @@ export default function CampaignDetail() {
 							precision={2}
 							prefix={<RiseOutlined />}
 						/>
+						{wowDeltas && <WowIndicator delta={wowDeltas.roas} />}
 					</Card>
 				</Col>
 				<Col span={6}>
@@ -393,6 +558,7 @@ export default function CampaignDetail() {
 							prefix={<PercentageOutlined />}
 							suffix="%"
 						/>
+						{wowDeltas && <WowIndicator delta={wowDeltas.acos} invertColor />}
 					</Card>
 				</Col>
 			</Row>

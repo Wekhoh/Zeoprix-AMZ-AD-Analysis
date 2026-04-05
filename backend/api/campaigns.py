@@ -9,6 +9,7 @@ from backend.database import get_db
 from backend.models import Campaign, PlacementRecord
 from backend.schemas.campaign import CampaignOut, CampaignDetail
 from backend.services.summary_service import summary_by_campaign
+from backend.services.kpi_calculator import calc_ctr, calc_cpc, calc_roas, calc_acos, calc_cvr
 
 router = APIRouter()
 
@@ -91,3 +92,44 @@ def get_campaign(campaign_id: int, db: Session = Depends(get_db)):
         first_date=first_dt,
         last_date=last_dt,
     )
+
+
+@router.get("/{campaign_id}/placement-summary")
+def get_campaign_placement_summary(
+    campaign_id: int,
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    """按展示位置聚合 KPI（用于位置对比）"""
+    q = db.query(
+        PlacementRecord.placement_type,
+        func.sum(PlacementRecord.impressions),
+        func.sum(PlacementRecord.clicks),
+        func.sum(PlacementRecord.spend),
+        func.sum(PlacementRecord.orders),
+        func.sum(PlacementRecord.sales),
+    ).filter(PlacementRecord.campaign_id == campaign_id)
+
+    if date_from:
+        q = q.filter(PlacementRecord.date >= date_from)
+    if date_to:
+        q = q.filter(PlacementRecord.date <= date_to)
+
+    rows = q.group_by(PlacementRecord.placement_type).all()
+
+    return [
+        {
+            "placement_type": r[0],
+            "impressions": r[1] or 0,
+            "clicks": r[2] or 0,
+            "spend": round(float(r[3] or 0), 2),
+            "orders": r[4] or 0,
+            "sales": round(float(r[5] or 0), 2),
+            "ctr": calc_ctr(r[2] or 0, r[1] or 0),
+            "cpc": calc_cpc(float(r[3] or 0), r[2] or 0),
+            "roas": calc_roas(float(r[5] or 0), float(r[3] or 0)),
+            "acos": calc_acos(float(r[3] or 0), float(r[5] or 0)),
+        }
+        for r in rows
+    ]
