@@ -34,45 +34,45 @@ ACTION_LABELS = {
 }
 
 
-def _get_campaign_metrics(db: Session, campaign: Campaign, period_days: int) -> dict:
-    """获取广告活动在指定时间段内的聚合指标"""
+def _batch_campaign_metrics(db: Session, period_days: int) -> dict[int, dict]:
+    """批量获取所有广告活动在指定时间段内的聚合指标（单次 SQL）"""
     cutoff = (datetime.now(timezone.utc) - timedelta(days=period_days)).strftime("%Y-%m-%d")
 
-    row = (
+    rows = (
         db.query(
+            PlacementRecord.campaign_id,
             func.sum(PlacementRecord.impressions),
             func.sum(PlacementRecord.clicks),
             func.sum(PlacementRecord.spend),
             func.sum(PlacementRecord.orders),
             func.sum(PlacementRecord.sales),
         )
-        .filter(
-            PlacementRecord.campaign_id == campaign.id,
-            PlacementRecord.date >= cutoff,
-        )
-        .first()
+        .filter(PlacementRecord.date >= cutoff)
+        .group_by(PlacementRecord.campaign_id)
+        .all()
     )
 
-    if not row or row[0] is None:
-        return {}
+    result: dict[int, dict] = {}
+    for row in rows:
+        cid = row[0]
+        imp = row[1] or 0
+        clk = row[2] or 0
+        spd = float(row[3] or 0)
+        orders = row[4] or 0
+        sales = float(row[5] or 0)
 
-    imp = row[0] or 0
-    clk = row[1] or 0
-    spd = float(row[2] or 0)
-    orders = row[3] or 0
-    sales = float(row[4] or 0)
-
-    return {
-        "impressions": imp,
-        "clicks": clk,
-        "spend": round(spd, 2),
-        "orders": orders,
-        "sales": round(sales, 2),
-        "ctr": calc_ctr(clk, imp),
-        "cpc": calc_cpc(spd, clk),
-        "roas": calc_roas(sales, spd),
-        "acos": calc_acos(spd, sales),
-    }
+        result[cid] = {
+            "impressions": imp,
+            "clicks": clk,
+            "spend": round(spd, 2),
+            "orders": orders,
+            "sales": round(sales, 2),
+            "ctr": calc_ctr(clk, imp),
+            "cpc": calc_cpc(spd, clk),
+            "roas": calc_roas(sales, spd),
+            "acos": calc_acos(spd, sales),
+        }
+    return result
 
 
 def _check_condition(
@@ -103,9 +103,16 @@ def evaluate_rules(db: Session) -> list[dict]:
 
     now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
+    # Batch-load metrics per unique period_days (N+1 → O(unique_periods))
+    period_cache: dict[int, dict[int, dict]] = {}
     for rule in rules:
+        if rule.period_days not in period_cache:
+            period_cache[rule.period_days] = _batch_campaign_metrics(db, rule.period_days)
+
+    for rule in rules:
+        metrics_by_campaign = period_cache[rule.period_days]
         for campaign in campaigns:
-            metrics = _get_campaign_metrics(db, campaign, rule.period_days)
+            metrics = metrics_by_campaign.get(campaign.id, {})
             if not metrics:
                 continue
 
@@ -153,8 +160,11 @@ def get_rule_results(db: Session, rule_id: int) -> list[dict]:
 
     now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
+    # Single batch query for this rule's period
+    metrics_by_campaign = _batch_campaign_metrics(db, rule.period_days)
+
     for campaign in campaigns:
-        metrics = _get_campaign_metrics(db, campaign, rule.period_days)
+        metrics = metrics_by_campaign.get(campaign.id, {})
         if not metrics:
             continue
 

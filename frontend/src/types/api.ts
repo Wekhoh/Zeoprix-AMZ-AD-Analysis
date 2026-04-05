@@ -11,6 +11,13 @@ export interface Campaign {
 	portfolio: string | null;
 	status: string;
 	status_updated_at: string | null;
+	spend?: number;
+	orders?: number;
+	sales?: number;
+	acos?: number | null;
+	roas?: number | null;
+	impressions?: number;
+	clicks?: number;
 }
 
 export interface PlacementRecord {

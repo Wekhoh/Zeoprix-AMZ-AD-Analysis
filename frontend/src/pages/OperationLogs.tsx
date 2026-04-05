@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { Table, Spin, Button, Flex } from "antd";
+import { Table, Button, Flex } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
 import { exportToCsv } from "../utils/exportCsv";
 import api from "../api/client";
 import FilterToolbar from "../components/FilterToolbar";
+import PageSkeleton from "../components/PageSkeleton";
 import { useFilterParams } from "../hooks/useFilterParams";
 import type { OperationLog } from "../types/api";
 
@@ -67,8 +68,10 @@ export default function OperationLogs() {
 		dataIndex: c.dataIndex as string,
 	}));
 
+	if (loading && data.length === 0) return <PageSkeleton variant="table" />;
+
 	return (
-		<Spin spinning={loading}>
+		<div>
 			<Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
 				<FilterToolbar />
 				<Button
@@ -89,6 +92,7 @@ export default function OperationLogs() {
 				dataSource={data}
 				rowKey="id"
 				size="small"
+				loading={loading}
 				scroll={{ x: 1000 }}
 				pagination={{
 					current: currentPage,
@@ -104,6 +108,6 @@ export default function OperationLogs() {
 					},
 				}}
 			/>
-		</Spin>
+		</div>
 	);
 }

@@ -1,9 +1,12 @@
-import { useState, useEffect } from "react";
-import { Card, Tag, Spin, Space } from "antd";
+import { useState, useEffect, useCallback } from "react";
+import { Card, Tag, Space } from "antd";
 import { Link } from "react-router-dom";
 import type { Suggestion, SuggestionSeverity } from "../types/api";
 import api from "../api/client";
 import EmptyState from "../components/EmptyState";
+import FilterToolbar from "../components/FilterToolbar";
+import PageSkeleton from "../components/PageSkeleton";
+import { useFilterParams } from "../hooks/useFilterParams";
 import { useTheme } from "../hooks/useTheme";
 
 const SEVERITY_CONFIG: Record<
@@ -119,29 +122,31 @@ function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
 export default function Suggestions() {
 	const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
 	const [loading, setLoading] = useState(false);
+	const { dateFrom, dateTo, buildQueryString } = useFilterParams();
 
-	useEffect(() => {
+	const fetchData = useCallback(() => {
 		setLoading(true);
 		api
-			.get<Suggestion[]>("/analysis/suggestions")
+			.get<Suggestion[]>(`/analysis/suggestions${buildQueryString()}`)
 			.then((res) => setSuggestions(res.data))
 			.finally(() => setLoading(false));
-	}, []);
+	}, [buildQueryString]);
 
-	if (loading) {
-		return (
-			<div style={{ textAlign: "center", padding: 80 }}>
-				<Spin size="large" />
-			</div>
-		);
-	}
+	useEffect(fetchData, [dateFrom, dateTo, fetchData]);
+
+	if (loading) return <PageSkeleton variant="cards" />;
 
 	if (suggestions.length === 0) {
 		return (
-			<EmptyState
-				title="暂无优化建议"
-				description="数据量不足以生成建议。导入更多广告数据后，系统将自动分析并给出优化建议。"
-			/>
+			<>
+				<div style={{ marginBottom: 16 }}>
+					<FilterToolbar showCampaignFilter={false} />
+				</div>
+				<EmptyState
+					title="暂无优化建议"
+					description="当前日期范围内数据不足以生成建议。调整日期范围或导入更多广告数据。"
+				/>
+			</>
 		);
 	}
 
@@ -149,6 +154,9 @@ export default function Suggestions() {
 
 	return (
 		<div>
+			<div style={{ marginBottom: 16 }}>
+				<FilterToolbar showCampaignFilter={false} />
+			</div>
 			{Array.from(grouped.entries()).map(([severity, items]) => {
 				const config = SEVERITY_CONFIG[severity];
 				return (

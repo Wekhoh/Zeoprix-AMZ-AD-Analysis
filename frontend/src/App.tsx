@@ -1,21 +1,24 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ConfigProvider, theme } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import ErrorBoundary from "./components/ErrorBoundary";
+import PageSkeleton from "./components/PageSkeleton";
 import AppLayout from "./components/Layout";
-import Dashboard from "./pages/Dashboard";
-import Import from "./pages/Import";
-import Campaigns from "./pages/Campaigns";
-import Placements from "./pages/Placements";
-import OperationLogs from "./pages/OperationLogs";
-import Summaries from "./pages/Summaries";
-import CampaignDetail from "./pages/CampaignDetail";
-import Analysis from "./pages/Analysis";
-import SearchTerms from "./pages/SearchTerms";
-import Suggestions from "./pages/Suggestions";
-import Rules from "./pages/Rules";
-import Settings from "./pages/Settings";
 import { useTheme, ThemeProvider } from "./hooks/useTheme";
+
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Import = lazy(() => import("./pages/Import"));
+const Campaigns = lazy(() => import("./pages/Campaigns"));
+const CampaignDetail = lazy(() => import("./pages/CampaignDetail"));
+const Placements = lazy(() => import("./pages/Placements"));
+const OperationLogs = lazy(() => import("./pages/OperationLogs"));
+const Summaries = lazy(() => import("./pages/Summaries"));
+const Analysis = lazy(() => import("./pages/Analysis"));
+const SearchTerms = lazy(() => import("./pages/SearchTerms"));
+const Suggestions = lazy(() => import("./pages/Suggestions"));
+const Rules = lazy(() => import("./pages/Rules"));
+const Settings = lazy(() => import("./pages/Settings"));
 
 const lightTokens = {
 	colorPrimary: "#2563EB",
@@ -189,22 +192,24 @@ function AppInner() {
 		>
 			<ErrorBoundary>
 				<BrowserRouter>
-					<Routes>
-						<Route element={<AppLayout />}>
-							<Route path="/" element={<Dashboard />} />
-							<Route path="/import" element={<Import />} />
-							<Route path="/campaigns" element={<Campaigns />} />
-							<Route path="/campaigns/:id" element={<CampaignDetail />} />
-							<Route path="/placements" element={<Placements />} />
-							<Route path="/operation-logs" element={<OperationLogs />} />
-							<Route path="/summaries" element={<Summaries />} />
-							<Route path="/analysis" element={<Analysis />} />
-							<Route path="/search-terms" element={<SearchTerms />} />
-							<Route path="/suggestions" element={<Suggestions />} />
-							<Route path="/rules" element={<Rules />} />
-							<Route path="/settings" element={<Settings />} />
-						</Route>
-					</Routes>
+					<Suspense fallback={<PageSkeleton variant="table" />}>
+						<Routes>
+							<Route element={<AppLayout />}>
+								<Route path="/" element={<Dashboard />} />
+								<Route path="/import" element={<Import />} />
+								<Route path="/campaigns" element={<Campaigns />} />
+								<Route path="/campaigns/:id" element={<CampaignDetail />} />
+								<Route path="/placements" element={<Placements />} />
+								<Route path="/operation-logs" element={<OperationLogs />} />
+								<Route path="/summaries" element={<Summaries />} />
+								<Route path="/analysis" element={<Analysis />} />
+								<Route path="/search-terms" element={<SearchTerms />} />
+								<Route path="/suggestions" element={<Suggestions />} />
+								<Route path="/rules" element={<Rules />} />
+								<Route path="/settings" element={<Settings />} />
+							</Route>
+						</Routes>
+					</Suspense>
 				</BrowserRouter>
 			</ErrorBoundary>
 		</ConfigProvider>

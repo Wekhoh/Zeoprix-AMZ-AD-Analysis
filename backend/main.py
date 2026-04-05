@@ -70,22 +70,6 @@ app.add_middleware(
 # API 路由
 app.include_router(api_router)
 
-# 静态文件（生产模式：serve 前端构建产物）
-frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
-if frontend_dist.exists():
-    # 静态资源（JS/CSS/图片）
-    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
-
-    # SPA catch-all: 所有非 /api 路径都返回 index.html（React Router 处理）
-    @app.get("/{path:path}")
-    async def spa_fallback(request: Request, path: str):
-        # 如果是静态文件（有扩展名），尝试直接返回
-        file_path = frontend_dist / path
-        if file_path.is_file():
-            return FileResponse(file_path)
-        # 否则返回 index.html 让 React Router 处理
-        return FileResponse(frontend_dist / "index.html")
-
 
 @app.get("/api/health")
 def health():
@@ -126,3 +110,20 @@ def health():
         db.close()
 
     return result
+
+
+# 静态文件（生产模式：serve 前端构建产物）— 必须在所有 API 路由之后
+frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
+if frontend_dist.exists():
+    # 静态资源（JS/CSS/图片）
+    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
+
+    # SPA catch-all: 所有非 /api 路径都返回 index.html（React Router 处理）
+    @app.get("/{path:path}")
+    async def spa_fallback(request: Request, path: str):
+        # 如果是静态文件（有扩展名），尝试直接返回
+        file_path = frontend_dist / path
+        if file_path.is_file():
+            return FileResponse(file_path)
+        # 否则返回 index.html 让 React Router 处理
+        return FileResponse(frontend_dist / "index.html")

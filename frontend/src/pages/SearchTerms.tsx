@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
 	Alert,
+	Button,
 	Card,
 	Upload,
 	message,
@@ -9,9 +10,8 @@ import {
 	Tag,
 	Space,
 	InputNumber,
-	Spin,
 } from "antd";
-import { UploadOutlined } from "@ant-design/icons";
+import { UploadOutlined, DownloadOutlined } from "@ant-design/icons";
 import type { UploadFile, TableProps } from "antd";
 import api from "../api/client";
 import CampaignFilter from "../components/CampaignFilter";
@@ -21,6 +21,8 @@ import type { ImportResult } from "../types/api";
 
 interface BucketItem {
 	search_term: string;
+	campaign_id: number | null;
+	campaign_name: string;
 	impressions: number;
 	clicks: number;
 	ctr: number | null;
@@ -66,6 +68,49 @@ const formatNum = (val: number | null | undefined): string => {
 	return String(Math.round(val));
 };
 
+function exportNegativeKeywords(moneyPits: BucketItem[]) {
+	if (!moneyPits.length) {
+		message.warning("暂无 Money Pits 数据可导出");
+		return;
+	}
+	const header = "Keyword,Match Type\n";
+	const rows = moneyPits
+		.map((item) => `"${item.search_term.replace(/"/g, '""')}",Negative Exact`)
+		.join("\n");
+	const csv = "\uFEFF" + header + rows;
+	const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+	const url = URL.createObjectURL(blob);
+	const link = document.createElement("a");
+	link.href = url;
+	link.download = `negative_keywords_${new Date().toISOString().slice(0, 10)}.csv`;
+	link.click();
+	URL.revokeObjectURL(url);
+}
+
+function exportHarvestKeywords(winners: BucketItem[]) {
+	if (!winners.length) {
+		message.warning("暂无 Winners 数据可导出");
+		return;
+	}
+	const header = "Campaign,Keyword,Match Type,Suggested Bid\n";
+	const rows = winners
+		.map((item) => {
+			const term = item.search_term.replace(/"/g, '""');
+			const campaign = (item.campaign_name || "").replace(/"/g, '""');
+			const bid = item.cpc != null ? item.cpc.toFixed(2) : "";
+			return `"${campaign}","${term}",Exact,${bid}`;
+		})
+		.join("\n");
+	const csv = "\uFEFF" + header + rows;
+	const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+	const url = URL.createObjectURL(blob);
+	const link = document.createElement("a");
+	link.href = url;
+	link.download = `harvest_keywords_${new Date().toISOString().slice(0, 10)}.csv`;
+	link.click();
+	URL.revokeObjectURL(url);
+}
+
 const BUCKET_COLORS: Record<string, string> = {
 	winners: "#52c41a",
 	potential: "#1677ff",
@@ -84,6 +129,13 @@ function buildBucketColumns(
 	bucketKey: string,
 ): TableProps<BucketItem>["columns"] {
 	return [
+		{
+			title: "来源活动",
+			dataIndex: "campaign_name",
+			key: "campaign_name",
+			width: 160,
+			ellipsis: true,
+		},
 		{
 			title: "搜索词",
 			dataIndex: "search_term",
@@ -233,16 +285,27 @@ export default function SearchTerms() {
 				</span>
 			),
 			children: (
-				<Table<BucketItem>
-					columns={buildBucketColumns("winners")}
-					dataSource={bucketData?.winners ?? []}
-					rowKey="search_term"
-					loading={loading}
-					size="middle"
-					scroll={{ x: 1400 }}
-					pagination={{ pageSize: 20, showSizeChanger: true }}
-					rowClassName={() => "row-green-tint"}
-				/>
+				<>
+					<div style={{ marginBottom: 12, textAlign: "right" }}>
+						<Button
+							icon={<DownloadOutlined />}
+							onClick={() => exportHarvestKeywords(bucketData?.winners ?? [])}
+							disabled={!bucketData?.winners?.length}
+						>
+							Harvest 导出精准匹配
+						</Button>
+					</div>
+					<Table<BucketItem>
+						columns={buildBucketColumns("winners")}
+						dataSource={bucketData?.winners ?? []}
+						rowKey={(r) => `${r.campaign_id}-${r.search_term}`}
+						loading={loading}
+						size="middle"
+						scroll={{ x: 1600 }}
+						pagination={{ pageSize: 20, showSizeChanger: true }}
+						rowClassName={() => "row-green-tint"}
+					/>
+				</>
 			),
 		},
 		{
@@ -256,10 +319,10 @@ export default function SearchTerms() {
 				<Table<BucketItem>
 					columns={buildBucketColumns("potential")}
 					dataSource={bucketData?.potential ?? []}
-					rowKey="search_term"
+					rowKey={(r) => `${r.campaign_id}-${r.search_term}`}
 					loading={loading}
 					size="middle"
-					scroll={{ x: 1400 }}
+					scroll={{ x: 1600 }}
 					pagination={{ pageSize: 20, showSizeChanger: true }}
 					rowClassName={() => "row-blue-tint"}
 				/>
@@ -273,16 +336,29 @@ export default function SearchTerms() {
 				</span>
 			),
 			children: (
-				<Table<BucketItem>
-					columns={buildBucketColumns("money_pits")}
-					dataSource={bucketData?.money_pits ?? []}
-					rowKey="search_term"
-					loading={loading}
-					size="middle"
-					scroll={{ x: 1400 }}
-					pagination={{ pageSize: 20, showSizeChanger: true }}
-					rowClassName={() => "row-red-tint"}
-				/>
+				<>
+					<div style={{ marginBottom: 12, textAlign: "right" }}>
+						<Button
+							icon={<DownloadOutlined />}
+							onClick={() =>
+								exportNegativeKeywords(bucketData?.money_pits ?? [])
+							}
+							disabled={!bucketData?.money_pits?.length}
+						>
+							导出否定关键词列表
+						</Button>
+					</div>
+					<Table<BucketItem>
+						columns={buildBucketColumns("money_pits")}
+						dataSource={bucketData?.money_pits ?? []}
+						rowKey={(r) => `${r.campaign_id}-${r.search_term}`}
+						loading={loading}
+						size="middle"
+						scroll={{ x: 1600 }}
+						pagination={{ pageSize: 20, showSizeChanger: true }}
+						rowClassName={() => "row-red-tint"}
+					/>
+				</>
 			),
 		},
 		{
@@ -296,10 +372,10 @@ export default function SearchTerms() {
 				<Table<BucketItem>
 					columns={buildBucketColumns("low_data")}
 					dataSource={bucketData?.low_data ?? []}
-					rowKey="search_term"
+					rowKey={(r) => `${r.campaign_id}-${r.search_term}`}
 					loading={loading}
 					size="middle"
-					scroll={{ x: 1400 }}
+					scroll={{ x: 1600 }}
 					pagination={{ pageSize: 20, showSizeChanger: true }}
 				/>
 			),
@@ -404,25 +480,23 @@ export default function SearchTerms() {
 			{/* Stats Summary Bar */}
 			{stats && (
 				<Card size="small" style={{ marginBottom: 24 }}>
-					<Spin spinning={loading}>
-						<Space size="large" style={{ fontSize: 14 }}>
-							<span>
-								总计 <strong>{stats.total}</strong> 词
-							</span>
-							<span style={{ color: BUCKET_COLORS.winners }}>
-								Winners <strong>{stats.winners_count}</strong>
-							</span>
-							<span style={{ color: BUCKET_COLORS.potential }}>
-								Potential <strong>{stats.potential_count}</strong>
-							</span>
-							<span style={{ color: BUCKET_COLORS.money_pits }}>
-								Money Pits <strong>{stats.money_pits_count}</strong>
-							</span>
-							<span style={{ color: BUCKET_COLORS.low_data }}>
-								Low Data <strong>{stats.low_data_count}</strong>
-							</span>
-						</Space>
-					</Spin>
+					<Space size="large" style={{ fontSize: 14 }}>
+						<span>
+							总计 <strong>{stats.total}</strong> 词
+						</span>
+						<span style={{ color: BUCKET_COLORS.winners }}>
+							Winners <strong>{stats.winners_count}</strong>
+						</span>
+						<span style={{ color: BUCKET_COLORS.potential }}>
+							Potential <strong>{stats.potential_count}</strong>
+						</span>
+						<span style={{ color: BUCKET_COLORS.money_pits }}>
+							Money Pits <strong>{stats.money_pits_count}</strong>
+						</span>
+						<span style={{ color: BUCKET_COLORS.low_data }}>
+							Low Data <strong>{stats.low_data_count}</strong>
+						</span>
+					</Space>
 				</Card>
 			)}
 

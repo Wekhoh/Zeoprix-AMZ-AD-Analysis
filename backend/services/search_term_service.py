@@ -231,6 +231,57 @@ def get_negative_candidates(
     ]
 
 
+def _bucket_terms_with_campaign(db: Session, campaign_id: Optional[int] = None) -> list[dict]:
+    """搜索词汇总（按 search_term + campaign 聚合，包含来源活动名称）"""
+    q = db.query(
+        SearchTermReport.search_term,
+        SearchTermReport.campaign_id,
+        Campaign.name.label("campaign_name"),
+        func.sum(SearchTermReport.impressions).label("impressions"),
+        func.sum(SearchTermReport.clicks).label("clicks"),
+        func.sum(SearchTermReport.spend).label("spend"),
+        func.sum(SearchTermReport.orders).label("orders"),
+        func.sum(SearchTermReport.sales).label("sales"),
+    ).outerjoin(Campaign, SearchTermReport.campaign_id == Campaign.id)
+
+    if campaign_id:
+        q = q.filter(SearchTermReport.campaign_id == campaign_id)
+
+    rows = (
+        q.group_by(SearchTermReport.search_term, SearchTermReport.campaign_id)
+        .order_by(func.sum(SearchTermReport.spend).desc())
+        .all()
+    )
+
+    results = []
+    for r in rows:
+        imp, clk, spd, orders, sales = (
+            r[3] or 0,
+            r[4] or 0,
+            r[5] or 0.0,
+            r[6] or 0,
+            r[7] or 0.0,
+        )
+        results.append(
+            {
+                "search_term": r[0],
+                "campaign_id": r[1],
+                "campaign_name": r[2] or "未关联",
+                "impressions": imp,
+                "clicks": clk,
+                "spend": round(spd, 2),
+                "orders": orders,
+                "sales": round(sales, 2),
+                "ctr": round(clk / imp, 4) if imp > 0 else None,
+                "cpc": round(spd / clk, 2) if clk > 0 else None,
+                "cvr": round(orders / clk, 4) if clk > 0 else None,
+                "acos": round(spd / sales, 4) if sales > 0 else None,
+                "roas": round(sales / spd, 2) if spd > 0 else None,
+            }
+        )
+    return results
+
+
 def classify_search_terms_4bucket(
     db: Session,
     campaign_id: Optional[int] = None,
@@ -245,7 +296,7 @@ def classify_search_terms_4bucket(
 
     Returns: {"winners": [...], "potential": [...], "money_pits": [...], "low_data": [...], "stats": {...}}
     """
-    all_terms = get_search_term_summary(db, campaign_id)
+    all_terms = _bucket_terms_with_campaign(db, campaign_id)
 
     winners = []
     potential = []

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Alert, Card, Col, Progress, Row, Statistic, Spin, Table } from "antd";
+import { Alert, Card, Col, Progress, Row, Statistic, Table } from "antd";
 import {
 	DollarOutlined,
 	ShoppingCartOutlined,
@@ -23,6 +23,7 @@ import OnboardingGuide, {
 } from "../components/OnboardingGuide";
 import { useFilterParams } from "../hooks/useFilterParams";
 import { useTheme } from "../hooks/useTheme";
+import PageSkeleton from "../components/PageSkeleton";
 import type {
 	DailyTrend,
 	DashboardAlert,
@@ -151,10 +152,7 @@ export default function Dashboard() {
 		}
 	}, [loading, isEmpty]);
 
-	if (loading)
-		return (
-			<Spin size="large" style={{ display: "block", margin: "100px auto" }} />
-		);
+	if (loading) return <PageSkeleton variant="dashboard" />;
 
 	if (isEmpty) {
 		return (

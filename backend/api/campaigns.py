@@ -8,18 +8,21 @@ from sqlalchemy import func
 from backend.database import get_db
 from backend.models import Campaign, PlacementRecord
 from backend.schemas.campaign import CampaignOut, CampaignDetail
+from backend.services.summary_service import summary_by_campaign
 
 router = APIRouter()
 
 
-@router.get("", response_model=list[CampaignOut])
+@router.get("")
 def list_campaigns(
     status: Optional[str] = Query(None),
     ad_type: Optional[str] = Query(None),
     marketplace_id: Optional[int] = Query(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
-    """获取广告活动列表"""
+    """获取广告活动列表（含 KPI）"""
     q = db.query(Campaign)
     if status:
         q = q.filter(Campaign.status == status)
@@ -27,7 +30,25 @@ def list_campaigns(
         q = q.filter(Campaign.ad_type == ad_type)
     if marketplace_id:
         q = q.filter(Campaign.marketplace_id == marketplace_id)
-    return q.order_by(Campaign.name).all()
+    campaigns = q.order_by(Campaign.name).all()
+
+    # Build KPI lookup from summary_by_campaign (single batch query)
+    kpi_list = summary_by_campaign(db, date_from, date_to, marketplace_id)
+    kpi_map = {row["campaign_id"]: row for row in kpi_list}
+
+    result = []
+    for c in campaigns:
+        row = CampaignOut.model_validate(c).model_dump()
+        kpi = kpi_map.get(c.id, {})
+        row["spend"] = kpi.get("spend", 0)
+        row["orders"] = kpi.get("orders", 0)
+        row["sales"] = kpi.get("sales", 0)
+        row["acos"] = kpi.get("acos")
+        row["roas"] = kpi.get("roas")
+        row["impressions"] = kpi.get("impressions", 0)
+        row["clicks"] = kpi.get("clicks", 0)
+        result.append(row)
+    return result
 
 
 @router.get("/{campaign_id}", response_model=CampaignDetail)

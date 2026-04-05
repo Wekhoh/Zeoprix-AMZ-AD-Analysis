@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
 	Card,
+	Collapse,
 	Upload,
 	message,
 	Table,
@@ -15,6 +16,7 @@ import {
 	UploadOutlined,
 	FileTextOutlined,
 	CheckCircleOutlined,
+	QuestionCircleOutlined,
 } from "@ant-design/icons";
 import type { UploadFile } from "antd";
 import api from "../api/client";
@@ -196,6 +198,61 @@ export default function Import() {
 					content="支持上传亚马逊后台导出的展示位置 CSV 文件和操作日志 TXT 文件。系统会自动识别格式并检测重复数据。"
 				/>
 			</div>
+			<Collapse
+				style={{ marginBottom: 24 }}
+				items={[
+					{
+						key: "guide",
+						label: (
+							<Space>
+								<QuestionCircleOutlined />
+								如何从亚马逊后台下载报告？
+							</Space>
+						),
+						children: (
+							<div style={{ fontSize: 13, lineHeight: 1.8 }}>
+								<h4 style={{ marginTop: 0 }}>展示位置报告（CSV）</h4>
+								<ol style={{ paddingLeft: 20 }}>
+									<li>登录 Seller Central &rarr; 广告 &rarr; 广告活动管理器</li>
+									<li>点击目标广告活动名称进入详情</li>
+									<li>
+										切换到 <strong>展示位置</strong> 标签页
+									</li>
+									<li>设置日期范围（建议最近 30 天）</li>
+									<li>
+										点击右上角 <strong>导出</strong> 按钮，选择 CSV 格式
+									</li>
+								</ol>
+								<h4>搜索词报告（CSV）</h4>
+								<ol style={{ paddingLeft: 20 }}>
+									<li>
+										广告活动管理器 &rarr; 左侧菜单 &rarr;{" "}
+										<strong>衡量和报告</strong> &rarr; <strong>广告报告</strong>
+									</li>
+									<li>
+										点击 <strong>创建报告</strong>
+									</li>
+									<li>
+										报告类型选择 <strong>搜索词</strong>，时间单位选
+										<strong>汇总</strong>
+									</li>
+									<li>设置日期范围，点击运行报告</li>
+									<li>报告生成后在列表中下载 CSV 文件</li>
+								</ol>
+								<h4>操作日志（TXT）</h4>
+								<ol style={{ paddingLeft: 20 }}>
+									<li>广告活动管理器 &rarr; 目标广告活动</li>
+									<li>
+										点击 <strong>历史记录</strong> 标签
+									</li>
+									<li>选择日期范围，点击导出</li>
+								</ol>
+							</div>
+						),
+					},
+				]}
+			/>
+
 			<Row gutter={24}>
 				<Col span={12}>
 					<Card title="上传展示位置 CSV" style={{ marginBottom: 24 }}>

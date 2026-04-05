@@ -15,32 +15,47 @@ from backend.utils.amazon_rules import (
     NEGATIVE_KEYWORD_BUFFER_HOURS,
 )
 
+DEFAULT_TARGET_ACOS = 0.30  # 30% — industry standard profitable threshold
 
-def generate_suggestions(db: Session) -> list[dict]:
-    """生成所有广告活动的优化建议"""
+
+def _calc_target_bid(
+    base_bid: float, actual_acos: float, target_acos: float = DEFAULT_TARGET_ACOS
+) -> float:
+    """Calculate target bid to achieve target ACOS, assuming linear bid-CPC relationship."""
+    return round(max(base_bid * (target_acos / actual_acos), 0.02), 2)
+
+
+def generate_suggestions(
+    db: Session,
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> list[dict]:
+    """生成所有广告活动的优化建议（可选日期范围）"""
     suggestions = []
 
     # 获取每个活动的汇总数据
-    campaign_stats = (
-        db.query(
-            Campaign.id,
-            Campaign.name,
-            Campaign.status,
-            Campaign.base_bid,
-            Campaign.ad_type,
-            Campaign.bidding_strategy,
-            func.sum(PlacementRecord.impressions).label("imp"),
-            func.sum(PlacementRecord.clicks).label("clk"),
-            func.sum(PlacementRecord.spend).label("spd"),
-            func.sum(PlacementRecord.orders).label("ord"),
-            func.sum(PlacementRecord.sales).label("sal"),
-            func.min(PlacementRecord.date).label("first_date"),
-            func.max(PlacementRecord.date).label("last_date"),
-        )
-        .outerjoin(PlacementRecord)
-        .group_by(Campaign.id)
-        .all()
-    )
+    base_q = db.query(
+        Campaign.id,
+        Campaign.name,
+        Campaign.status,
+        Campaign.base_bid,
+        Campaign.ad_type,
+        Campaign.bidding_strategy,
+        func.sum(PlacementRecord.impressions).label("imp"),
+        func.sum(PlacementRecord.clicks).label("clk"),
+        func.sum(PlacementRecord.spend).label("spd"),
+        func.sum(PlacementRecord.orders).label("ord"),
+        func.sum(PlacementRecord.sales).label("sal"),
+        func.min(PlacementRecord.date).label("first_date"),
+        func.max(PlacementRecord.date).label("last_date"),
+    ).outerjoin(PlacementRecord)
+
+    if date_from:
+        base_q = base_q.filter(PlacementRecord.date >= date_from)
+    if date_to:
+        base_q = base_q.filter(PlacementRecord.date <= date_to)
+
+    campaign_stats = base_q.group_by(Campaign.id).all()
 
     for stat in campaign_stats:
         cid, name, status, base_bid = stat[0], stat[1], stat[2], stat[3]
@@ -61,7 +76,16 @@ def generate_suggestions(db: Session) -> list[dict]:
         if acos and acos > 0.50:
             strategy = bidding_strategy or "Fixed bids"
             strategy_advice = get_bidding_strategy_advice(strategy, acos, roas)
-            action_text = "建议降低竞价 20-30% 或暂停表现最差的展示位置"
+
+            if base_bid:
+                target_bid = _calc_target_bid(base_bid, acos)
+                action_text = (
+                    f"建议将竞价从 ${base_bid:.2f} 降至 ${target_bid:.2f}"
+                    f"（目标 ACOS 30%，降幅 {(1 - target_bid / base_bid) * 100:.0f}%）"
+                )
+            else:
+                action_text = "建议降低竞价 20-30% 或暂停表现最差的展示位置"
+
             if strategy_advice:
                 action_text = f"{action_text}。{strategy_advice}"
             suggestions.append(
@@ -78,6 +102,7 @@ def generate_suggestions(db: Session) -> list[dict]:
                         "acos": round(acos, 4),
                         "spend": round(spd, 2),
                         "roas": roas,
+                        "target_bid": _calc_target_bid(base_bid, acos) if base_bid else None,
                     },
                 }
             )
@@ -146,6 +171,17 @@ def generate_suggestions(db: Session) -> list[dict]:
             if actual_cpc > base_bid * 1.5:
                 strategy = bidding_strategy or "Fixed bids"
                 max_cpc = calc_max_possible_cpc(base_bid, 0, strategy)
+
+                # Calculate recommended bid reduction
+                if acos and acos > 0:
+                    target_bid = _calc_target_bid(base_bid, acos)
+                    action_text = (
+                        f"建议将基础出价从 ${base_bid:.2f} 降至 ${target_bid:.2f}，"
+                        f"并降低搜索顶部竞价调整百分比"
+                    )
+                else:
+                    action_text = "考虑降低搜索顶部的竞价调整百分比"
+
                 suggestions.append(
                     {
                         "type": "high_cpc",
@@ -155,7 +191,7 @@ def generate_suggestions(db: Session) -> list[dict]:
                         "campaign_name": name,
                         "title": f"CPC ${actual_cpc:.2f} 远超基础出价 ${base_bid}",
                         "description": f"实际 CPC (${actual_cpc:.2f}) 是基础出价 (${base_bid}) 的 {actual_cpc / base_bid:.1f} 倍，竞争可能过于激烈。理论最高 CPC（无广告位调整）: ${max_cpc}",
-                        "action": "考虑降低搜索顶部的竞价调整百分比",
+                        "action": action_text,
                         "metric": {
                             "cpc": round(actual_cpc, 2),
                             "base_bid": base_bid,
@@ -189,18 +225,19 @@ def generate_suggestions(db: Session) -> list[dict]:
             )
 
     # 获取展示位置级别的洞察
-    placement_stats = (
-        db.query(
-            PlacementRecord.placement_type,
-            func.sum(PlacementRecord.impressions),
-            func.sum(PlacementRecord.clicks),
-            func.sum(PlacementRecord.spend),
-            func.sum(PlacementRecord.orders),
-            func.sum(PlacementRecord.sales),
-        )
-        .group_by(PlacementRecord.placement_type)
-        .all()
+    place_q = db.query(
+        PlacementRecord.placement_type,
+        func.sum(PlacementRecord.impressions),
+        func.sum(PlacementRecord.clicks),
+        func.sum(PlacementRecord.spend),
+        func.sum(PlacementRecord.orders),
+        func.sum(PlacementRecord.sales),
     )
+    if date_from:
+        place_q = place_q.filter(PlacementRecord.date >= date_from)
+    if date_to:
+        place_q = place_q.filter(PlacementRecord.date <= date_to)
+    placement_stats = place_q.group_by(PlacementRecord.placement_type).all()
 
     for pstat in placement_stats:
         ptype, imp, clk, spd, orders, sales = pstat
