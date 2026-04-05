@@ -1,11 +1,27 @@
+import re
 import uuid
 import time
+from fastapi import HTTPException
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
 from backend.logging_config import get_logger
 
 logger = get_logger("http")
+
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def validate_date_param(value: str | None, param_name: str = "date") -> None:
+    """Validate a YYYY-MM-DD date string. Raises HTTPException 422 on invalid format."""
+    if value is None:
+        return
+    if not _DATE_RE.match(value):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid date format for '{param_name}': expected YYYY-MM-DD, got '{value}'",
+        )
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):

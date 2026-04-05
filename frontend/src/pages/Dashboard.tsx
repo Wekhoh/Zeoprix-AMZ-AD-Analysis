@@ -70,7 +70,8 @@ export default function Dashboard() {
 						.get<BenchmarkResult>(
 							`/benchmarks/compare${qs}${sep}category=${withCategory.category_key}`,
 						)
-						.then((r) => setBenchmarkData(r.data));
+						.then((r) => setBenchmarkData(r.data))
+							.catch(() => setBenchmarkData(null));
 				} else {
 					setBenchmarkData(null);
 				}

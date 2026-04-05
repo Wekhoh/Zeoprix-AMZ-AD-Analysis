@@ -126,6 +126,9 @@ def get_campaign_placement_summary(
     db: Session = Depends(get_db),
 ):
     """按展示位置聚合 KPI（用于位置对比）"""
+    from fastapi import HTTPException
+    if not db.query(Campaign).filter(Campaign.id == campaign_id).first():
+        raise HTTPException(status_code=404, detail="Campaign not found")
     q = db.query(
         PlacementRecord.placement_type,
         func.sum(PlacementRecord.impressions),

@@ -96,6 +96,7 @@ export default function CampaignDetail() {
 				setNotes(noteRes.data);
 				setPlacementSummary(pSumRes.data);
 			})
+			.catch(() => {})
 			.finally(() => setLoading(false));
 	}, [id]);
 

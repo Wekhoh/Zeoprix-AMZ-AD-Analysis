@@ -30,6 +30,7 @@ export default function Summaries() {
 				setByCampaign(c.data);
 				setByPlacement(p.data);
 			})
+			.catch(() => {})
 			.finally(() => setLoading(false));
 	}, [dateFrom, dateTo, campaignId, marketplaceId, buildQueryString]);
 

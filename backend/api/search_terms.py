@@ -1,10 +1,11 @@
 """搜索词分析 API"""
 
 from typing import Optional
-from fastapi import APIRouter, UploadFile, File, Depends, Query
+from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, Query
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
+from backend.models import Campaign
 from backend.services.search_term_service import (
     import_search_terms,
     get_search_term_summary,
@@ -14,6 +15,13 @@ from backend.services.search_term_service import (
 )
 
 router = APIRouter()
+
+
+def _validate_campaign_id(db: Session, campaign_id: int | None) -> None:
+    """Raise 404 if campaign_id is provided but does not exist."""
+    if campaign_id is not None:
+        if not db.query(Campaign).filter(Campaign.id == campaign_id).first():
+            raise HTTPException(status_code=404, detail="Campaign not found")
 
 
 @router.post("/import")
@@ -52,6 +60,7 @@ def search_term_summary(
     db: Session = Depends(get_db),
 ):
     """搜索词汇总"""
+    _validate_campaign_id(db, campaign_id)
     return get_search_term_summary(db, campaign_id)
 
 
@@ -62,6 +71,7 @@ def top_converting(
     db: Session = Depends(get_db),
 ):
     """高转化搜索词"""
+    _validate_campaign_id(db, campaign_id)
     return get_top_converting_terms(db, min_orders, campaign_id)
 
 
@@ -72,6 +82,7 @@ def negative_candidates(
     db: Session = Depends(get_db),
 ):
     """否定词候选"""
+    _validate_campaign_id(db, campaign_id)
     return get_negative_candidates(db, min_clicks, campaign_id)
 
 
@@ -82,4 +93,5 @@ def search_term_buckets(
     db: Session = Depends(get_db),
 ):
     """4-Bucket 搜索词分析"""
+    _validate_campaign_id(db, campaign_id)
     return classify_search_terms_4bucket(db, campaign_id, target_acos)
