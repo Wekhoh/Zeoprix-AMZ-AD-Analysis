@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Table, Tag, Tabs } from "antd";
+import { Progress, Table, Tag, Tabs, Tooltip } from "antd";
 import api from "../api/client";
 import EmptyState from "../components/EmptyState";
 import FilterToolbar from "../components/FilterToolbar";
@@ -142,18 +142,41 @@ export default function Campaigns() {
 				),
 		},
 		{
+			title: "日预算",
+			dataIndex: "daily_budget",
+			key: "budget",
+			width: 130,
+			sorter: (a: Campaign, b: Campaign) =>
+				(a.daily_budget ?? 0) - (b.daily_budget ?? 0),
+			render: (budget: number | null, record: Campaign) => {
+				if (budget == null) return "-";
+				const spend = record.spend ?? 0;
+				const pct = budget > 0 ? Math.min((spend / budget) * 100, 100) : 0;
+				const strokeColor =
+					pct > 90 ? "#ff4d4f" : pct > 70 ? "#faad14" : "#52c41a";
+				return (
+					<Tooltip
+						title={`花费 $${spend.toFixed(2)} / 日预算 $${budget.toFixed(2)}`}
+					>
+						<div style={{ minWidth: 80 }}>
+							<div style={{ fontSize: 12 }}>${budget.toFixed(0)}/天</div>
+							<Progress
+								percent={pct}
+								size="small"
+								strokeColor={strokeColor}
+								showInfo={false}
+							/>
+						</div>
+					</Tooltip>
+				);
+			},
+		},
+		{
 			title: "出价",
 			dataIndex: "base_bid",
 			key: "bid",
 			width: 80,
 			render: (v: number | null) => (v ? `$${v}` : "-"),
-		},
-		{
-			title: "竞价策略",
-			dataIndex: "bidding_strategy",
-			key: "strategy",
-			width: 180,
-			ellipsis: true,
 		},
 	];
 

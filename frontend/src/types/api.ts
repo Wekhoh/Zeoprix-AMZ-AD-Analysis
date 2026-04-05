@@ -18,6 +18,7 @@ export interface Campaign {
 	roas?: number | null;
 	impressions?: number;
 	clicks?: number;
+	daily_budget?: number | null;
 }
 
 export interface PlacementRecord {

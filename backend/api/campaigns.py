@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from backend.database import get_db
-from backend.models import Campaign, PlacementRecord
+from backend.models import Campaign, PlacementRecord, CampaignDailyRecord
 from backend.schemas.campaign import CampaignOut, CampaignDetail
 from backend.services.summary_service import summary_by_campaign
 from backend.services.kpi_calculator import calc_ctr, calc_cpc, calc_roas, calc_acos, calc_cvr
@@ -37,6 +37,29 @@ def list_campaigns(
     kpi_list = summary_by_campaign(db, date_from, date_to, marketplace_id)
     kpi_map = {row["campaign_id"]: row for row in kpi_list}
 
+    # Batch fetch latest budget per campaign (single query using subquery for max date)
+    from sqlalchemy.orm import aliased
+
+    latest_budget_sq = (
+        db.query(
+            CampaignDailyRecord.campaign_id,
+            func.max(CampaignDailyRecord.date).label("max_date"),
+        )
+        .filter(CampaignDailyRecord.budget != None)
+        .group_by(CampaignDailyRecord.campaign_id)
+        .subquery()
+    )
+    budget_rows = (
+        db.query(CampaignDailyRecord.campaign_id, CampaignDailyRecord.budget)
+        .join(
+            latest_budget_sq,
+            (CampaignDailyRecord.campaign_id == latest_budget_sq.c.campaign_id)
+            & (CampaignDailyRecord.date == latest_budget_sq.c.max_date),
+        )
+        .all()
+    )
+    budget_map = {r[0]: r[1] for r in budget_rows}
+
     result = []
     for c in campaigns:
         row = CampaignOut.model_validate(c).model_dump()
@@ -48,6 +71,7 @@ def list_campaigns(
         row["roas"] = kpi.get("roas")
         row["impressions"] = kpi.get("impressions", 0)
         row["clicks"] = kpi.get("clicks", 0)
+        row["daily_budget"] = budget_map.get(c.id)
         result.append(row)
     return result
 
