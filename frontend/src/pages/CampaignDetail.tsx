@@ -117,12 +117,6 @@ export default function CampaignDetail() {
 		fetchNotes();
 	};
 
-	if (loading || !campaign) {
-		return (
-			<Spin size="large" style={{ display: "block", margin: "100px auto" }} />
-		);
-	}
-
 	const wowDeltas = useMemo(
 		() => (trends.length > 0 ? calcWowDeltas(trends) : null),
 		[trends],
@@ -164,6 +158,12 @@ export default function CampaignDetail() {
 		}
 		return marks;
 	}, [logs, trends]);
+
+	if (loading || !campaign) {
+		return (
+			<Spin size="large" style={{ display: "block", margin: "100px auto" }} />
+		);
+	}
 
 	const statusColor =
 		campaign.status === "Delivering"
