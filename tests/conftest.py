@@ -54,6 +54,113 @@ def client(db_session: Session):
 
 
 @pytest.fixture()
+def seed_campaign_data(db_session: Session):
+    """Seed 1 Marketplace, 2 Campaigns, 6 PlacementRecords for service tests."""
+    from backend.models import Campaign, Marketplace, PlacementRecord, Product, ProductVariant
+
+    mp = Marketplace(code="US", name="US", currency="USD")
+    db_session.add(mp)
+    db_session.flush()
+
+    c1 = Campaign(
+        name="Test-SP-Auto",
+        ad_type="SP",
+        targeting_type="auto",
+        match_type="close",
+        bidding_strategy="Fixed bids",
+        base_bid=1.50,
+        status="Delivering",
+        marketplace_id=mp.id,
+    )
+    c2 = Campaign(
+        name="Test-SP-Manual",
+        ad_type="SP",
+        targeting_type="manual",
+        match_type="exact",
+        bidding_strategy="Dynamic bidding (down only)",
+        base_bid=2.00,
+        status="Paused",
+        marketplace_id=mp.id,
+    )
+    db_session.add_all([c1, c2])
+    db_session.flush()
+
+    # C1: 3 placements across 2 dates — total spend=60, sales=200, orders=8
+    placements = [
+        PlacementRecord(
+            date="2025-11-10",
+            campaign_id=c1.id,
+            placement_type="搜索顶部",
+            impressions=500,
+            clicks=20,
+            spend=20.0,
+            orders=3,
+            sales=80.0,
+        ),
+        PlacementRecord(
+            date="2025-11-10",
+            campaign_id=c1.id,
+            placement_type="产品页面",
+            impressions=300,
+            clicks=10,
+            spend=10.0,
+            orders=2,
+            sales=50.0,
+        ),
+        PlacementRecord(
+            date="2025-11-11",
+            campaign_id=c1.id,
+            placement_type="搜索顶部",
+            impressions=600,
+            clicks=25,
+            spend=30.0,
+            orders=3,
+            sales=70.0,
+        ),
+        # C2: spend=100, sales=0, orders=0 (money pit)
+        PlacementRecord(
+            date="2025-11-10",
+            campaign_id=c2.id,
+            placement_type="搜索顶部",
+            impressions=2000,
+            clicks=50,
+            spend=50.0,
+            orders=0,
+            sales=0.0,
+        ),
+        PlacementRecord(
+            date="2025-11-11",
+            campaign_id=c2.id,
+            placement_type="搜索顶部",
+            impressions=1500,
+            clicks=40,
+            spend=50.0,
+            orders=0,
+            sales=0.0,
+        ),
+    ]
+    db_session.add_all(placements)
+
+    # Product with cost data for profit calculation
+    prod = Product(sku="TEST-SKU", name="Test Product", category="test")
+    db_session.add(prod)
+    db_session.flush()
+    variant = ProductVariant(
+        product_id=prod.id,
+        variant_code="V1",
+        variant_name="Default",
+        marketplace_id=mp.id,
+        unit_cost=5.0,
+        fba_fee=3.0,
+        referral_fee_pct=0.15,
+    )
+    db_session.add(variant)
+    db_session.commit()
+
+    return {"marketplace": mp, "campaigns": [c1, c2]}
+
+
+@pytest.fixture()
 def sample_csv() -> str:
     """Small SP placement CSV string (3 rows, known values)."""
     return (
