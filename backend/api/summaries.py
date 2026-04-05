@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
+from backend.middleware import validate_date_param
 from backend.services.summary_service import (
     summary_by_date,
     summary_by_campaign,
@@ -24,6 +25,8 @@ def get_dashboard(
     db: Session = Depends(get_db),
 ):
     """首页仪表盘数据"""
+    validate_date_param(date_from, "date_from")
+    validate_date_param(date_to, "date_to")
     return dashboard_overview(db, date_from, date_to, marketplace_id)
 
 
@@ -36,6 +39,8 @@ def get_summary_by_date(
     db: Session = Depends(get_db),
 ):
     """按日期汇总"""
+    validate_date_param(date_from, "date_from")
+    validate_date_param(date_to, "date_to")
     return summary_by_date(db, date_from, date_to, campaign_id, marketplace_id)
 
 
@@ -47,6 +52,8 @@ def get_summary_by_campaign(
     db: Session = Depends(get_db),
 ):
     """按广告活动汇总"""
+    validate_date_param(date_from, "date_from")
+    validate_date_param(date_to, "date_to")
     return summary_by_campaign(db, date_from, date_to, marketplace_id)
 
 

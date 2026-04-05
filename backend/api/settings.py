@@ -6,6 +6,10 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
+from backend.logging_config import get_logger
+
+settings_logger = get_logger("settings")
+
 from backend.models import (
     Product,
     ProductVariant,
@@ -71,6 +75,7 @@ def delete_backup_endpoint(backup_id: int, db: Session = Depends(get_db)):
     """删除指定备份"""
     if not delete_backup(db, backup_id):
         raise HTTPException(status_code=404, detail="备份不存在")
+    settings_logger.warning(f"DESTRUCTIVE: backup {backup_id} deleted")
     return {"success": True}
 
 
@@ -89,10 +94,11 @@ def restore_backup_endpoint(backup_id: int, db: Session = Depends(get_db)):
 @router.get("/products")
 def list_products(db: Session = Depends(get_db)):
     """获取产品列表（含变体和成本信息）"""
-    products = db.query(Product).all()
+    from sqlalchemy.orm import joinedload
+
+    products = db.query(Product).options(joinedload(Product.variants)).all()
     result = []
     for p in products:
-        variants = db.query(ProductVariant).filter_by(product_id=p.id).all()
         result.append(
             {
                 "id": p.id,
@@ -282,6 +288,12 @@ def clear_advertising_data(db: Session = Depends(get_db)):
         counts[label] = count
 
     db.commit()
+
+    total_deleted = sum(counts.values())
+    settings_logger.warning(
+        f"DESTRUCTIVE: clear-data executed. {total_deleted} records deleted. "
+        f"Backup #{backup_result.get('id')} created."
+    )
 
     return {
         "success": True,

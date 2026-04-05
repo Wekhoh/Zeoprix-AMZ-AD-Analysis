@@ -90,6 +90,8 @@ def parse_csv_placement_data(
     """
     解析 SP 展示位置 CSV（原始逻辑，保持不变）
     """
+    if not content or not content.strip():
+        return [], {"error": "Empty file"}
     date_str = parse_date_from_filename(filename)
     if not date_str:
         raise ValueError(f"无法从文件名提取日期: {filename}")

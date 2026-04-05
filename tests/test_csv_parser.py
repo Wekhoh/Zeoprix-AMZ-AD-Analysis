@@ -8,6 +8,16 @@ from backend.services.csv_parser import (
 
 
 class TestParsePlacementCsv:
+    def test_empty_content_returns_empty(self):
+        placements, summary = parse_csv_placement_data("", "empty.csv")
+        assert placements == []
+        assert summary.get("error") == "Empty file"
+
+    def test_whitespace_only_returns_empty(self):
+        placements, summary = parse_csv_placement_data("  \n  \n", "blank.csv")
+        assert placements == []
+        assert summary.get("error") == "Empty file"
+
     def test_parse_3_rows(self, sample_csv):
         """Feed a 3-row CSV string, verify output structure, dates, numbers."""
         # Filename encodes date as MMDD: 1116 -> 2025-11-16
