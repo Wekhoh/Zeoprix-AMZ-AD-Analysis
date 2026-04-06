@@ -19,6 +19,7 @@ import {
 	PlusOutlined,
 	PlayCircleOutlined,
 	DeleteOutlined,
+	DownloadOutlined,
 } from "@ant-design/icons";
 import api from "../api/client";
 import EmptyState from "../components/EmptyState";
@@ -85,6 +86,30 @@ const ACTION_COLORS: Record<string, string> = {
 	attribution_reminder: "geekblue",
 	negative_buffer_reminder: "purple",
 };
+
+function exportRuleResults(results: RuleResult[]) {
+	if (!results.length) return;
+	const header =
+		"Campaign,Rule,Condition Field,Triggered Value,Action Type,Recommended Action\n";
+	const rows = results
+		.map((r) => {
+			const campaign = r.campaign_name.replace(/"/g, '""');
+			const rule = r.rule_name.replace(/"/g, '""');
+			const val =
+				r.triggered_value !== null ? r.triggered_value.toString() : "";
+			const action = r.recommended_action.replace(/"/g, '""');
+			return `"${campaign}","${rule}","${r.condition_field}",${val},"${r.action_type}","${action}"`;
+		})
+		.join("\n");
+	const csv = "\uFEFF" + header + rows;
+	const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+	const url = URL.createObjectURL(blob);
+	const link = document.createElement("a");
+	link.href = url;
+	link.download = `rule_results_${new Date().toISOString().slice(0, 10)}.csv`;
+	link.click();
+	URL.revokeObjectURL(url);
+}
 
 function formatCondition(rule: RuleItem): string {
 	const field = FIELD_LABELS[rule.condition_field] ?? rule.condition_field;
@@ -332,6 +357,14 @@ export default function Rules() {
 				<Card
 					title={`评估结果 (${results.length} 条触发)`}
 					style={{ marginTop: 24 }}
+					extra={
+						<Button
+							icon={<DownloadOutlined />}
+							onClick={() => exportRuleResults(results)}
+						>
+							导出操作建议
+						</Button>
+					}
 				>
 					<Table
 						columns={resultColumns}

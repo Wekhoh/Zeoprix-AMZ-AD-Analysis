@@ -6,7 +6,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from backend.database import get_db
-from backend.models import Campaign, PlacementRecord, CampaignDailyRecord
+from backend.models import (
+    Campaign,
+    AdGroup,
+    PlacementRecord,
+    CampaignDailyRecord,
+    AdGroupDailyRecord,
+)
 from backend.schemas.campaign import CampaignOut, CampaignDetail
 from backend.services.summary_service import summary_by_campaign
 from backend.services.kpi_calculator import calc_ctr, calc_cpc, calc_roas, calc_acos, calc_cvr
@@ -127,6 +133,7 @@ def get_campaign_placement_summary(
 ):
     """按展示位置聚合 KPI（用于位置对比）"""
     from fastapi import HTTPException
+
     if not db.query(Campaign).filter(Campaign.id == campaign_id).first():
         raise HTTPException(status_code=404, detail="Campaign not found")
     q = db.query(
@@ -157,6 +164,56 @@ def get_campaign_placement_summary(
             "cpc": calc_cpc(float(r[3] or 0), r[2] or 0),
             "roas": calc_roas(float(r[5] or 0), float(r[3] or 0)),
             "acos": calc_acos(float(r[3] or 0), float(r[5] or 0)),
+        }
+        for r in rows
+    ]
+
+
+@router.get("/{campaign_id}/ad-groups")
+def get_campaign_ad_groups(
+    campaign_id: int,
+    db: Session = Depends(get_db),
+):
+    """获取广告活动下的广告组及其 KPI"""
+    from fastapi import HTTPException
+
+    if not db.query(Campaign).filter(Campaign.id == campaign_id).first():
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    # Get ad groups with aggregated daily metrics
+    rows = (
+        db.query(
+            AdGroup.id,
+            AdGroup.name,
+            AdGroup.status,
+            AdGroup.default_bid,
+            func.sum(AdGroupDailyRecord.impressions),
+            func.sum(AdGroupDailyRecord.clicks),
+            func.sum(AdGroupDailyRecord.spend),
+            func.sum(AdGroupDailyRecord.orders),
+            func.sum(AdGroupDailyRecord.sales),
+        )
+        .outerjoin(AdGroupDailyRecord, AdGroup.id == AdGroupDailyRecord.ad_group_id)
+        .filter(AdGroup.campaign_id == campaign_id)
+        .group_by(AdGroup.id)
+        .all()
+    )
+
+    return [
+        {
+            "id": r[0],
+            "name": r[1],
+            "status": r[2],
+            "default_bid": r[3],
+            "impressions": r[4] or 0,
+            "clicks": r[5] or 0,
+            "spend": round(float(r[6] or 0), 2),
+            "orders": r[7] or 0,
+            "sales": round(float(r[8] or 0), 2),
+            "ctr": calc_ctr(r[5] or 0, r[4] or 0),
+            "cpc": calc_cpc(float(r[6] or 0), r[5] or 0),
+            "roas": calc_roas(float(r[8] or 0), float(r[6] or 0)),
+            "acos": calc_acos(float(r[6] or 0), float(r[8] or 0)),
         }
         for r in rows
     ]

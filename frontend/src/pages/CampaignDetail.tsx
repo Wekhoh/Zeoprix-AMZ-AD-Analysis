@@ -71,6 +71,21 @@ export default function CampaignDetail() {
 			acos: number | null;
 		}[]
 	>([]);
+	const [adGroups, setAdGroups] = useState<
+		{
+			id: number;
+			name: string;
+			status: string;
+			default_bid: number | null;
+			impressions: number;
+			clicks: number;
+			spend: number;
+			orders: number;
+			sales: number;
+			roas: number | null;
+			acos: number | null;
+		}[]
+	>([]);
 
 	const fetchNotes = () => {
 		if (!id) return;
@@ -87,15 +102,19 @@ export default function CampaignDetail() {
 			api.get(`/operation-logs?campaign_id=${id}`),
 			api.get(`/notes?campaign_id=${id}`),
 			api.get(`/campaigns/${id}/placement-summary`),
+			api.get(`/campaigns/${id}/ad-groups`),
 		])
-			.then(([campRes, trendRes, placeRes, logRes, noteRes, pSumRes]) => {
-				setCampaign(campRes.data);
-				setTrends(trendRes.data);
-				setPlacements(placeRes.data?.data ?? placeRes.data);
-				setLogs(logRes.data?.data ?? logRes.data);
-				setNotes(noteRes.data);
-				setPlacementSummary(pSumRes.data);
-			})
+			.then(
+				([campRes, trendRes, placeRes, logRes, noteRes, pSumRes, agRes]) => {
+					setCampaign(campRes.data);
+					setTrends(trendRes.data);
+					setPlacements(placeRes.data?.data ?? placeRes.data);
+					setLogs(logRes.data?.data ?? logRes.data);
+					setNotes(noteRes.data);
+					setPlacementSummary(pSumRes.data);
+					setAdGroups(agRes.data);
+				},
+			)
 			.catch(() => {})
 			.finally(() => setLoading(false));
 	}, [id]);
@@ -384,6 +403,97 @@ export default function CampaignDetail() {
 					columns={placementSummaryColumns}
 					dataSource={placementSummary}
 					rowKey="placement_type"
+					size="middle"
+					pagination={false}
+				/>
+			),
+		},
+		{
+			key: "ad-groups",
+			label: `广告组 (${adGroups.length})`,
+			children: (
+				<Table
+					columns={[
+						{ title: "广告组", dataIndex: "name", key: "name", ellipsis: true },
+						{
+							title: "状态",
+							dataIndex: "status",
+							key: "status",
+							width: 90,
+							render: (s: string) => (
+								<Tag
+									color={
+										s === "Enabled"
+											? "green"
+											: s === "Paused"
+												? "red"
+												: "default"
+									}
+								>
+									{s}
+								</Tag>
+							),
+						},
+						{
+							title: "出价",
+							dataIndex: "default_bid",
+							key: "bid",
+							width: 80,
+							render: (v: number | null) => (v != null ? `$${v}` : "-"),
+						},
+						{
+							title: "花费",
+							dataIndex: "spend",
+							key: "spend",
+							width: 90,
+							sorter: (a: { spend: number }, b: { spend: number }) =>
+								a.spend - b.spend,
+							render: (v: number) => fmtUsd(v),
+						},
+						{
+							title: "订单",
+							dataIndex: "orders",
+							key: "orders",
+							width: 70,
+							sorter: (a: { orders: number }, b: { orders: number }) =>
+								a.orders - b.orders,
+						},
+						{
+							title: "ROAS",
+							dataIndex: "roas",
+							key: "roas",
+							width: 80,
+							render: (v: number | null) =>
+								v != null ? (
+									<span style={{ color: v >= 3 ? "#52c41a" : undefined }}>
+										{v.toFixed(2)}
+									</span>
+								) : (
+									"-"
+								),
+						},
+						{
+							title: "ACOS",
+							dataIndex: "acos",
+							key: "acos",
+							width: 90,
+							render: (v: number | null) => {
+								if (v == null) return "-";
+								return (
+									<span
+										style={{
+											color:
+												v > 0.5 ? "#ff4d4f" : v < 0.25 ? "#52c41a" : undefined,
+										}}
+									>
+										{fmtPct(v)}
+									</span>
+								);
+							},
+						},
+					]}
+					dataSource={adGroups}
+					rowKey="id"
 					size="middle"
 					pagination={false}
 				/>
