@@ -165,9 +165,25 @@ def dashboard_overview(db: Session, date_from=None, date_to=None, marketplace_id
     all_campaigns.sort(key=lambda x: x["spend"], reverse=True)
     top_campaigns = all_campaigns[:5]
 
-    # 智能告警
+    alerts = _generate_dashboard_alerts(all_campaigns)
+    profit_data = _calc_profit(db, kpi)
+    tacos_data = _calc_tacos(db, kpi, date_from, date_to)
+
+    return {
+        "kpi": kpi,
+        "status_counts": {s: c for s, c in status_counts},
+        "daily_trend": daily_trend,
+        "top_campaigns": top_campaigns,
+        "alerts": alerts,
+        "profit": profit_data,
+        "tacos": tacos_data,
+    }
+
+
+def _generate_dashboard_alerts(campaigns: list[dict]) -> list[dict]:
+    """Generate dashboard alerts from campaign KPI data."""
     alerts: list[dict] = []
-    for camp in all_campaigns:
+    for camp in campaigns:
         name = camp["campaign_name"]
         acos = camp.get("acos")
         spend = camp.get("spend", 0)
@@ -204,53 +220,47 @@ def dashboard_overview(db: Session, date_from=None, date_to=None, marketplace_id
                     "message": "ROAS 优秀，可考虑增加预算",
                 }
             )
+    return alerts
 
-    # 利润计算（仅当产品成本已配置时）
-    profit_data: dict = {}
-    variants_with_cost = db.query(ProductVariant).filter(ProductVariant.unit_cost.isnot(None)).all()
 
-    if variants_with_cost:
-        total_unit_cost = sum(v.unit_cost or 0 for v in variants_with_cost)
-        total_fba_fee = sum(v.fba_fee or 0 for v in variants_with_cost)
-        total_referral_pct = sum(v.referral_fee_pct or 0.15 for v in variants_with_cost)
-        count = len(variants_with_cost)
-        avg_unit_cost = total_unit_cost / count
-        avg_fba_fee = total_fba_fee / count
-        avg_referral_pct = total_referral_pct / count
+def _calc_profit(db: Session, kpi: dict) -> dict:
+    """Calculate estimated profit from product cost data."""
+    variants = db.query(ProductVariant).filter(ProductVariant.unit_cost.isnot(None)).all()
+    if not variants:
+        return {"has_cost_data": False}
 
-        total_sales = kpi.get("sales", 0) or 0
-        total_spend = kpi.get("spend", 0) or 0
-        total_orders = kpi.get("orders", 0) or 0
+    count = len(variants)
+    avg_unit_cost = sum(v.unit_cost or 0 for v in variants) / count
+    avg_fba_fee = sum(v.fba_fee or 0 for v in variants) / count
+    avg_referral_pct = sum(v.referral_fee_pct or 0.15 for v in variants) / count
 
-        # 盈亏平衡 ACOS
-        avg_price = (total_sales / total_orders) if total_orders > 0 else 0
-        if avg_price > 0:
-            break_even_acos = (
-                1 - avg_referral_pct - (avg_fba_fee / avg_price) - (avg_unit_cost / avg_price)
-            )
-        else:
-            break_even_acos = None
+    total_sales = kpi.get("sales", 0) or 0
+    total_spend = kpi.get("spend", 0) or 0
+    total_orders = kpi.get("orders", 0) or 0
 
-        # 预估利润
-        estimated_profit = (
-            total_sales
-            - total_spend
-            - (total_sales * avg_referral_pct)
-            - (total_orders * avg_fba_fee)
-            - (total_orders * avg_unit_cost)
-        )
-
-        profit_data = {
-            "break_even_acos": round(break_even_acos, 4) if break_even_acos is not None else None,
-            "estimated_profit": round(estimated_profit, 2),
-            "has_cost_data": True,
-        }
-
-    # TACoS 计算 (Total Advertising Cost of Sales)
-    tacos_data: dict = {"value": None, "has_data": False}
-    organic_q = db.query(
-        func.sum(OrganicSales.total_sales),
+    avg_price = (total_sales / total_orders) if total_orders > 0 else 0
+    break_even_acos = (
+        (1 - avg_referral_pct - (avg_fba_fee / avg_price) - (avg_unit_cost / avg_price))
+        if avg_price > 0
+        else None
     )
+    estimated_profit = (
+        total_sales
+        - total_spend
+        - (total_sales * avg_referral_pct)
+        - (total_orders * avg_fba_fee)
+        - (total_orders * avg_unit_cost)
+    )
+    return {
+        "break_even_acos": round(break_even_acos, 4) if break_even_acos is not None else None,
+        "estimated_profit": round(estimated_profit, 2),
+        "has_cost_data": True,
+    }
+
+
+def _calc_tacos(db: Session, kpi: dict, date_from=None, date_to=None) -> dict:
+    """Calculate TACoS (Total Advertising Cost of Sales)."""
+    organic_q = db.query(func.sum(OrganicSales.total_sales))
     if date_from:
         organic_q = organic_q.filter(OrganicSales.date >= date_from)
     if date_to:
@@ -259,18 +269,8 @@ def dashboard_overview(db: Session, date_from=None, date_to=None, marketplace_id
 
     if organic_total_sales and organic_total_sales > 0:
         ad_spend = kpi.get("spend", 0) or 0
-        tacos_value = round(ad_spend / organic_total_sales, 4) if organic_total_sales > 0 else None
-        tacos_data = {"value": tacos_value, "has_data": True}
-
-    return {
-        "kpi": kpi,
-        "status_counts": {s: c for s, c in status_counts},
-        "daily_trend": daily_trend,
-        "top_campaigns": top_campaigns,
-        "alerts": alerts,
-        "profit": profit_data if profit_data else {"has_cost_data": False},
-        "tacos": tacos_data,
-    }
+        return {"value": round(ad_spend / organic_total_sales, 4), "has_data": True}
+    return {"value": None, "has_data": False}
 
 
 def compare_periods(

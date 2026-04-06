@@ -6,6 +6,7 @@
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from backend.config import settings
 from backend.models import Campaign, PlacementRecord
 from backend.services.kpi_calculator import calc_roas, calc_acos
 from backend.utils.amazon_rules import (
@@ -15,11 +16,9 @@ from backend.utils.amazon_rules import (
     NEGATIVE_KEYWORD_BUFFER_HOURS,
 )
 
-DEFAULT_TARGET_ACOS = 0.30  # 30% — industry standard profitable threshold
-
 
 def _calc_target_bid(
-    base_bid: float, actual_acos: float, target_acos: float = DEFAULT_TARGET_ACOS
+    base_bid: float, actual_acos: float, target_acos: float = settings.ACOS_TARGET
 ) -> float:
     """Calculate target bid to achieve target ACOS, assuming linear bid-CPC relationship."""
     return round(max(base_bid * (target_acos / actual_acos), 0.02), 2)
@@ -72,8 +71,8 @@ def generate_suggestions(
         roas = calc_roas(sales, spd)
         acos = calc_acos(spd, sales)
 
-        # 规则 1: 高 ACOS 预警（ACOS > 50%）
-        if acos and acos > 0.50:
+        # 规则 1: 高 ACOS 预警
+        if acos and acos > settings.ACOS_WARNING_THRESHOLD:
             strategy = bidding_strategy or "Fixed bids"
             strategy_advice = get_bidding_strategy_advice(strategy, acos, roas)
 
@@ -108,7 +107,7 @@ def generate_suggestions(
             )
 
         # 规则 2: 有花费零订单
-        if spd > 5.0 and orders == 0:
+        if spd > settings.ZERO_ORDERS_MIN_SPEND and orders == 0:
             suggestions.append(
                 {
                     "type": "zero_orders",
@@ -128,7 +127,7 @@ def generate_suggestions(
             )
 
         # 规则 3: 高 ROAS 活动（ROAS > 3）— 增加预算建议
-        if roas and roas > 3.0 and status != "Paused":
+        if roas and roas > settings.ROAS_SCALE_UP_THRESHOLD and status != "Paused":
             suggestions.append(
                 {
                     "type": "scale_up",
@@ -144,9 +143,9 @@ def generate_suggestions(
             )
 
         # 规则 4: 低点击率（CTR < 0.2%）— 可能listing或关键词有问题
-        if imp > 1000 and clk > 0:
+        if imp > settings.CTR_MIN_IMPRESSIONS and clk > 0:
             ctr = clk / imp
-            if ctr < 0.002:
+            if ctr < settings.CTR_WARNING_THRESHOLD:
                 suggestions.append(
                     {
                         "type": "low_ctr",
@@ -168,7 +167,7 @@ def generate_suggestions(
         # 规则 5: 高 CPC 相对于出价（实际 CPC 远高于基础出价）
         if clk > 0 and base_bid:
             actual_cpc = spd / clk
-            if actual_cpc > base_bid * 1.5:
+            if actual_cpc > base_bid * settings.CPC_OVERPAY_RATIO:
                 strategy = bidding_strategy or "Fixed bids"
                 max_cpc = calc_max_possible_cpc(base_bid, 0, strategy)
 

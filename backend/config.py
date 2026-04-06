@@ -22,6 +22,15 @@ class Settings(BaseSettings):
     # 备份
     MAX_BACKUPS: int = 10
 
+    # 建议引擎阈值
+    ACOS_WARNING_THRESHOLD: float = 0.50
+    ACOS_TARGET: float = 0.30
+    ROAS_SCALE_UP_THRESHOLD: float = 3.0
+    CTR_WARNING_THRESHOLD: float = 0.002
+    CTR_MIN_IMPRESSIONS: int = 1000
+    ZERO_ORDERS_MIN_SPEND: float = 5.0
+    CPC_OVERPAY_RATIO: float = 1.5
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 
