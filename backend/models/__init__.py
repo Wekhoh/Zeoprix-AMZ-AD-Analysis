@@ -10,6 +10,7 @@ from backend.models.system import ImportHistory, Backup
 from backend.models.note import Note
 from backend.models.rule import Rule
 from backend.models.organic_sales import OrganicSales
+from backend.models.keyword_action import KeywordAction
 
 __all__ = [
     "Base",
@@ -28,4 +29,5 @@ __all__ = [
     "Note",
     "Rule",
     "OrganicSales",
+    "KeywordAction",
 ]

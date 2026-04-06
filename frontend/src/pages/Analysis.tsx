@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
 	Alert,
 	Card,
 	DatePicker,
 	Button,
+	Select,
 	Table,
+	Tabs,
 	Tag,
 	Row,
 	Col,
@@ -19,6 +21,7 @@ import {
 import dayjs from "dayjs";
 import "dayjs/locale/zh-cn";
 import api from "../api/client";
+import type { Campaign } from "../types/api";
 
 dayjs.locale("zh-cn");
 
@@ -60,6 +63,37 @@ export default function Analysis() {
 	);
 	const [result, setResult] = useState<ComparisonResult | null>(null);
 	const [loading, setLoading] = useState(false);
+
+	// Campaign comparison state
+	const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+	const [campA, setCampA] = useState<number | undefined>(undefined);
+	const [campB, setCampB] = useState<number | undefined>(undefined);
+	const [campResult, setCampResult] = useState<
+		(ComparisonResult & { campaign_a: string; campaign_b: string }) | null
+	>(null);
+	const [campLoading, setCampLoading] = useState(false);
+
+	useEffect(() => {
+		api
+			.get<Campaign[]>("/campaigns")
+			.then((res) => setCampaigns(res.data))
+			.catch(() => {});
+	}, []);
+
+	const handleCampCompare = async () => {
+		if (!campA || !campB) return;
+		setCampLoading(true);
+		try {
+			const params = new URLSearchParams({
+				campaign_a: String(campA),
+				campaign_b: String(campB),
+			});
+			const res = await api.get(`/summaries/campaign-comparison?${params}`);
+			setCampResult(res.data);
+		} finally {
+			setCampLoading(false);
+		}
+	};
 
 	const handleCompare = async () => {
 		if (!periodA || !periodB) return;
@@ -178,65 +212,186 @@ export default function Analysis() {
 			})
 		: [];
 
+	const campTableData = campResult
+		? Object.entries(kpiLabels).map(([key, label]) => {
+				const a = campResult.period_a[key as keyof KPIRow] ?? 0;
+				const b = campResult.period_b[key as keyof KPIRow] ?? 0;
+				const delta = campResult.deltas[key] || {
+					absolute: 0,
+					percent: null,
+					favorable: true,
+				};
+				return {
+					key,
+					label,
+					valueA: formatValue(key, a as number),
+					valueB: formatValue(key, b as number),
+					deltaAbs: delta.absolute,
+					deltaPct: delta.percent,
+					favorable: delta.favorable,
+				};
+			})
+		: [];
+
+	const campColumns = [
+		{ title: "指标", dataIndex: "label", key: "label", width: 120 },
+		{
+			title: campResult?.campaign_a || "活动 A",
+			dataIndex: "valueA",
+			key: "valueA",
+			width: 150,
+		},
+		{
+			title: campResult?.campaign_b || "活动 B",
+			dataIndex: "valueB",
+			key: "valueB",
+			width: 150,
+		},
+		columns[3], // reuse delta column
+	];
+
 	return (
 		<div>
-			<Card title="周期对比分析" style={{ marginBottom: 24 }}>
-				<Row gutter={16} align="middle">
-					<Col>
-						<span style={{ marginRight: 8, color: "#D1D5DB" }}>期间 A:</span>
-						<RangePicker
-							value={periodA}
-							onChange={(dates) =>
-								setPeriodA(dates as [dayjs.Dayjs, dayjs.Dayjs])
-							}
-						/>
-					</Col>
-					<Col>
-						<SwapOutlined style={{ fontSize: 20, color: "#6B7280" }} />
-					</Col>
-					<Col>
-						<span style={{ marginRight: 8, color: "#D1D5DB" }}>期间 B:</span>
-						<RangePicker
-							value={periodB}
-							onChange={(dates) =>
-								setPeriodB(dates as [dayjs.Dayjs, dayjs.Dayjs])
-							}
-						/>
-					</Col>
-					<Col>
-						<Button
-							type="primary"
-							onClick={handleCompare}
-							loading={loading}
-							disabled={!periodA || !periodB}
-						>
-							对比
-						</Button>
-					</Col>
-				</Row>
-			</Card>
-
 			<Alert
 				type="info"
 				showIcon
-				style={{ marginBottom: 24 }}
+				style={{ marginBottom: 16 }}
 				message="归因窗口提示：SP 广告使用 7 天归因窗口，SB/SD 使用 14 天。最近 7 天的数据可能尚未完全归因，建议分析 7 天前的完整数据。"
 			/>
-
-			{result ? (
-				<Card title="对比结果">
-					<Table
-						columns={columns}
-						dataSource={tableData}
-						pagination={false}
-						size="middle"
-					/>
-				</Card>
-			) : (
-				<Card>
-					<Empty description="选择两个日期范围并点击「对比」查看结果" />
-				</Card>
-			)}
+			<Tabs
+				items={[
+					{
+						key: "period",
+						label: "周期对比",
+						children: (
+							<div>
+								<Card style={{ marginBottom: 24 }}>
+									<Row gutter={16} align="middle">
+										<Col>
+											<span style={{ marginRight: 8 }}>期间 A:</span>
+											<RangePicker
+												value={periodA}
+												onChange={(dates) =>
+													setPeriodA(dates as [dayjs.Dayjs, dayjs.Dayjs])
+												}
+											/>
+										</Col>
+										<Col>
+											<SwapOutlined
+												style={{ fontSize: 20, color: "#6B7280" }}
+											/>
+										</Col>
+										<Col>
+											<span style={{ marginRight: 8 }}>期间 B:</span>
+											<RangePicker
+												value={periodB}
+												onChange={(dates) =>
+													setPeriodB(dates as [dayjs.Dayjs, dayjs.Dayjs])
+												}
+											/>
+										</Col>
+										<Col>
+											<Button
+												type="primary"
+												onClick={handleCompare}
+												loading={loading}
+												disabled={!periodA || !periodB}
+											>
+												对比
+											</Button>
+										</Col>
+									</Row>
+								</Card>
+								{result ? (
+									<Card title="对比结果">
+										<Table
+											columns={columns}
+											dataSource={tableData}
+											pagination={false}
+											size="middle"
+										/>
+									</Card>
+								) : (
+									<Card>
+										<Empty description="选择两个日期范围并点击「对比」查看结果" />
+									</Card>
+								)}
+							</div>
+						),
+					},
+					{
+						key: "campaign",
+						label: "活动对比",
+						children: (
+							<div>
+								<Card style={{ marginBottom: 24 }}>
+									<Row gutter={16} align="middle">
+										<Col>
+											<span style={{ marginRight: 8 }}>活动 A:</span>
+											<Select
+												placeholder="选择活动"
+												value={campA}
+												onChange={setCampA}
+												style={{ width: 280 }}
+												showSearch
+												optionFilterProp="label"
+												options={campaigns.map((c) => ({
+													value: c.id,
+													label: c.name,
+												}))}
+											/>
+										</Col>
+										<Col>
+											<SwapOutlined
+												style={{ fontSize: 20, color: "#6B7280" }}
+											/>
+										</Col>
+										<Col>
+											<span style={{ marginRight: 8 }}>活动 B:</span>
+											<Select
+												placeholder="选择活动"
+												value={campB}
+												onChange={setCampB}
+												style={{ width: 280 }}
+												showSearch
+												optionFilterProp="label"
+												options={campaigns.map((c) => ({
+													value: c.id,
+													label: c.name,
+												}))}
+											/>
+										</Col>
+										<Col>
+											<Button
+												type="primary"
+												onClick={handleCampCompare}
+												loading={campLoading}
+												disabled={!campA || !campB || campA === campB}
+											>
+												对比
+											</Button>
+										</Col>
+									</Row>
+								</Card>
+								{campResult ? (
+									<Card title="活动对比结果">
+										<Table
+											columns={campColumns}
+											dataSource={campTableData}
+											pagination={false}
+											size="middle"
+										/>
+									</Card>
+								) : (
+									<Card>
+										<Empty description="选择两个广告活动并点击「对比」查看结果" />
+									</Card>
+								)}
+							</div>
+						),
+					},
+				]}
+			/>
 		</div>
 	);
 }

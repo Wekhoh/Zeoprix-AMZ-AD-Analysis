@@ -80,3 +80,56 @@ def get_comparison(
 ):
     """周期对比分析"""
     return compare_periods(db, period_a_from, period_a_to, period_b_from, period_b_to, campaign_id)
+
+
+@router.get("/campaign-comparison")
+def get_campaign_comparison(
+    campaign_a: int = Query(...),
+    campaign_b: int = Query(...),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    """两个活动的 KPI 对比"""
+    validate_date_param(date_from, "date_from")
+    validate_date_param(date_to, "date_to")
+
+    all_campaigns = summary_by_campaign(db, date_from, date_to)
+    kpi_map = {c["campaign_id"]: c for c in all_campaigns}
+
+    a_data = kpi_map.get(campaign_a, {})
+    b_data = kpi_map.get(campaign_b, {})
+
+    kpi_fields = [
+        "impressions",
+        "clicks",
+        "spend",
+        "orders",
+        "sales",
+        "ctr",
+        "cpc",
+        "roas",
+        "acos",
+        "cvr",
+    ]
+    lower_is_better = {"acos", "cpc", "spend"}
+
+    period_a = {k: a_data.get(k, 0) or 0 for k in kpi_fields}
+    period_b = {k: b_data.get(k, 0) or 0 for k in kpi_fields}
+
+    deltas = {}
+    for key in kpi_fields:
+        a_val = period_a[key]
+        b_val = period_b[key]
+        absolute = round(b_val - a_val, 4)
+        percent = round((b_val - a_val) / a_val * 100, 1) if a_val else None
+        favorable = absolute <= 0 if key in lower_is_better else absolute >= 0
+        deltas[key] = {"absolute": absolute, "percent": percent, "favorable": favorable}
+
+    return {
+        "campaign_a": a_data.get("campaign_name", f"ID {campaign_a}"),
+        "campaign_b": b_data.get("campaign_name", f"ID {campaign_b}"),
+        "period_a": period_a,
+        "period_b": period_b,
+        "deltas": deltas,
+    }

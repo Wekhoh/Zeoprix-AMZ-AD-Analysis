@@ -127,6 +127,13 @@ const BUCKET_TAG_COLORS: Record<string, string> = {
 
 function buildBucketColumns(
 	bucketKey: string,
+	processedTerms?: Record<string, string>,
+	onMark?: (
+		term: string,
+		action: string,
+		campName?: string,
+		campId?: number | null,
+	) => void,
 ): TableProps<BucketItem>["columns"] {
 	return [
 		{
@@ -215,6 +222,43 @@ function buildBucketColumns(
 				<Tag color={BUCKET_TAG_COLORS[bucketKey] ?? "default"}>{v}</Tag>
 			),
 		},
+		...(processedTerms && onMark
+			? [
+					{
+						title: "状态",
+						key: "processed",
+						width: 100,
+						render: (_: unknown, record: BucketItem) => {
+							const status = processedTerms[record.search_term];
+							if (status) {
+								return (
+									<Tag color="green">
+										{status === "harvest_exact" ? "已收割" : "已否定"}
+									</Tag>
+								);
+							}
+							const action =
+								bucketKey === "money_pits" ? "negate_exact" : "harvest_exact";
+							const label = bucketKey === "money_pits" ? "否定" : "收割";
+							return (
+								<Button
+									size="small"
+									onClick={() =>
+										onMark(
+											record.search_term,
+											action,
+											record.campaign_name,
+											record.campaign_id,
+										)
+									}
+								>
+									{label}
+								</Button>
+							);
+						},
+					},
+				]
+			: []),
 	];
 }
 
@@ -227,6 +271,32 @@ export default function SearchTerms() {
 
 	const [bucketData, setBucketData] = useState<BucketResponse | null>(null);
 	const [loading, setLoading] = useState(false);
+	const [processedTerms, setProcessedTerms] = useState<Record<string, string>>(
+		{},
+	);
+
+	useEffect(() => {
+		api
+			.get<Record<string, string>>("/search-terms/processed-terms")
+			.then((res) => setProcessedTerms(res.data))
+			.catch(() => {});
+	}, []);
+
+	const markAsProcessed = async (
+		term: string,
+		actionType: string,
+		campaignName?: string,
+		campaignId?: number | null,
+	) => {
+		await api.post("/search-terms/actions", {
+			search_term: term,
+			action_type: actionType,
+			from_campaign_id: campaignId,
+			from_campaign_name: campaignName,
+		});
+		setProcessedTerms((prev) => ({ ...prev, [term]: actionType }));
+		message.success(`已标记「${term}」为 ${actionType}`);
+	};
 
 	const fetchData = useCallback(async () => {
 		setLoading(true);
@@ -296,7 +366,11 @@ export default function SearchTerms() {
 						</Button>
 					</div>
 					<Table<BucketItem>
-						columns={buildBucketColumns("winners")}
+						columns={buildBucketColumns(
+							"winners",
+							processedTerms,
+							markAsProcessed,
+						)}
 						dataSource={bucketData?.winners ?? []}
 						rowKey={(r) => `${r.campaign_id}-${r.search_term}`}
 						loading={loading}
@@ -317,7 +391,11 @@ export default function SearchTerms() {
 			),
 			children: (
 				<Table<BucketItem>
-					columns={buildBucketColumns("potential")}
+					columns={buildBucketColumns(
+						"potential",
+						processedTerms,
+						markAsProcessed,
+					)}
 					dataSource={bucketData?.potential ?? []}
 					rowKey={(r) => `${r.campaign_id}-${r.search_term}`}
 					loading={loading}
@@ -349,7 +427,11 @@ export default function SearchTerms() {
 						</Button>
 					</div>
 					<Table<BucketItem>
-						columns={buildBucketColumns("money_pits")}
+						columns={buildBucketColumns(
+							"money_pits",
+							processedTerms,
+							markAsProcessed,
+						)}
 						dataSource={bucketData?.money_pits ?? []}
 						rowKey={(r) => `${r.campaign_id}-${r.search_term}`}
 						loading={loading}
@@ -370,7 +452,11 @@ export default function SearchTerms() {
 			),
 			children: (
 				<Table<BucketItem>
-					columns={buildBucketColumns("low_data")}
+					columns={buildBucketColumns(
+						"low_data",
+						processedTerms,
+						markAsProcessed,
+					)}
 					dataSource={bucketData?.low_data ?? []}
 					rowKey={(r) => `${r.campaign_id}-${r.search_term}`}
 					loading={loading}
