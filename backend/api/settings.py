@@ -116,7 +116,7 @@ def list_products(db: Session = Depends(get_db)):
                         "fba_fee": v.fba_fee,
                         "referral_fee_pct": v.referral_fee_pct,
                     }
-                    for v in variants
+                    for v in p.variants
                 ],
             }
         )

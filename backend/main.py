@@ -51,10 +51,18 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
 # Global unhandled exception handler — prevents raw tracebacks reaching users
+# Must exclude HTTPException (FastAPI handles those with proper status codes)
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Unhandled exception on {request.method} {request.url.path}: {exc}", exc_info=True)
+    from fastapi import HTTPException as _HTTPException
+
+    if isinstance(exc, _HTTPException):
+        raise exc  # Let FastAPI's built-in handler return proper 4xx
+    logger.error(
+        f"Unhandled exception on {request.method} {request.url.path}: {exc}", exc_info=True
+    )
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
