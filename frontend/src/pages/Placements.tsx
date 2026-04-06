@@ -138,13 +138,7 @@ export default function Placements() {
 				</div>
 				<Button
 					icon={<DownloadOutlined />}
-					onClick={() =>
-						exportToCsv(
-							data as unknown as Record<string, unknown>[],
-							exportColumns,
-							"展示位置数据",
-						)
-					}
+					onClick={() => exportToCsv(data, exportColumns, "展示位置数据")}
 				>
 					导出 CSV
 				</Button>

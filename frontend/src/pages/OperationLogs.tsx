@@ -76,13 +76,7 @@ export default function OperationLogs() {
 				<FilterToolbar />
 				<Button
 					icon={<DownloadOutlined />}
-					onClick={() =>
-						exportToCsv(
-							data as unknown as Record<string, unknown>[],
-							exportColumns,
-							"操作日志",
-						)
-					}
+					onClick={() => exportToCsv(data, exportColumns, "操作日志")}
 				>
 					导出 CSV
 				</Button>

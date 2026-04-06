@@ -12,8 +12,8 @@ interface ColumnDef {
 	) => string | number | null | undefined;
 }
 
-export function exportToCsv(
-	data: Record<string, unknown>[],
+export function exportToCsv<T extends Record<string, unknown>>(
+	data: T[],
 	columns: ColumnDef[],
 	filename: string,
 ) {

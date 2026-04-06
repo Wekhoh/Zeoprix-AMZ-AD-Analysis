@@ -211,7 +211,13 @@ export default function Rules() {
 					title="确定删除此规则？"
 					onConfirm={() => handleDelete(record.id)}
 				>
-					<Button type="text" danger icon={<DeleteOutlined />} size="small" />
+					<Button
+						type="text"
+						danger
+						icon={<DeleteOutlined />}
+						size="small"
+						aria-label="删除规则"
+					/>
 				</Popconfirm>
 			),
 		},

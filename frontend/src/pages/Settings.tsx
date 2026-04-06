@@ -255,7 +255,13 @@ export default function Settings() {
 					title="确定删除此备份？"
 					onConfirm={() => handleDeleteBackup(record.id)}
 				>
-					<Button type="text" danger icon={<DeleteOutlined />} size="small" />
+					<Button
+						type="text"
+						danger
+						icon={<DeleteOutlined />}
+						size="small"
+						aria-label="删除"
+					/>
 				</Popconfirm>
 			),
 		},
@@ -428,7 +434,13 @@ export default function Settings() {
 					title="确定删除此记录？"
 					onConfirm={() => handleDeleteOrganicSales(record.id)}
 				>
-					<Button type="text" danger icon={<DeleteOutlined />} size="small" />
+					<Button
+						type="text"
+						danger
+						icon={<DeleteOutlined />}
+						size="small"
+						aria-label="删除"
+					/>
 				</Popconfirm>
 			),
 		},

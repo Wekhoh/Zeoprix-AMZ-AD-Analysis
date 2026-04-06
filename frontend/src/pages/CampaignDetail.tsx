@@ -451,6 +451,7 @@ export default function CampaignDetail() {
 											danger
 											icon={<DeleteOutlined />}
 											size="small"
+											aria-label="删除笔记"
 										/>
 									</Popconfirm>,
 								]}
