@@ -331,6 +331,38 @@ export default function Analysis() {
 												对比
 											</Button>
 										</Col>
+										<Col>
+											<Button
+												onClick={() => {
+													// Preset: last 7 days vs same 7 days last year
+													const toB = dayjs();
+													const fromB = toB.subtract(6, "day");
+													setPeriodA([
+														fromB.subtract(1, "year"),
+														toB.subtract(1, "year"),
+													]);
+													setPeriodB([fromB, toB]);
+												}}
+											>
+												去年同期 (7 天)
+											</Button>
+										</Col>
+										<Col>
+											<Button
+												onClick={() => {
+													// Preset: last 30 days vs same 30 days last year
+													const toB = dayjs();
+													const fromB = toB.subtract(29, "day");
+													setPeriodA([
+														fromB.subtract(1, "year"),
+														toB.subtract(1, "year"),
+													]);
+													setPeriodB([fromB, toB]);
+												}}
+											>
+												去年同期 (30 天)
+											</Button>
+										</Col>
 									</Row>
 								</Card>
 								{result ? (
