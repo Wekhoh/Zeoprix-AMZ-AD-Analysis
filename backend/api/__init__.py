@@ -16,6 +16,7 @@ from backend.api import (
     rules,
     reports,
     benchmarks,
+    inventory,
 )
 
 api_router = APIRouter(prefix="/api")
@@ -36,3 +37,4 @@ api_router.include_router(analysis.router, prefix="/analysis", tags=["智能建�
 api_router.include_router(rules.router, prefix="/rules", tags=["自动化规则"])
 api_router.include_router(reports.router, prefix="/reports", tags=["报告导出"])
 api_router.include_router(benchmarks.router, prefix="/benchmarks", tags=["品类基准"])
+api_router.include_router(inventory.router, prefix="/inventory", tags=["库存管理"])
