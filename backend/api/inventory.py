@@ -1,6 +1,7 @@
 """库存管理 API — FBA inventory snapshots + risk alerts"""
 
 from typing import Optional
+
 from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy.orm import Session
 

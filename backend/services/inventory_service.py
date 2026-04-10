@@ -16,7 +16,6 @@ from sqlalchemy.orm import Session
 from backend.models import Campaign, InventorySnapshot, ProductVariant
 from backend.services.csv_parser import _clean_num
 
-
 # Column mapping: Amazon report header → normalized field
 # Supports English (default Seller Central) + Chinese (卖家中心 zh-CN)
 COLUMN_MAP = {
