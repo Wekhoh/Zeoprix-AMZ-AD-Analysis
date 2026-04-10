@@ -282,17 +282,26 @@ def generate_suggestions(
     for s in suggestions:
         s["hash"] = _suggestion_hash(s["type"], s.get("campaign_id"))
 
-    # Filter out resolved/dismissed/active-snoozed suggestions
+    # Filter out resolved/dismissed/active-snoozed suggestions (DB-level filtering)
     from datetime import date
+    from sqlalchemy import or_, and_
 
     today_str = date.today().isoformat()
-    status_rows = db.query(SuggestionStatus).all()
-    hidden_hashes = set()
-    for st in status_rows:
-        if st.status in ("resolved", "dismissed"):
-            hidden_hashes.add(st.suggestion_hash)
-        elif st.status == "snoozed" and st.snooze_until and st.snooze_until > today_str:
-            hidden_hashes.add(st.suggestion_hash)
+    hidden_rows = (
+        db.query(SuggestionStatus.suggestion_hash)
+        .filter(
+            or_(
+                SuggestionStatus.status.in_(["resolved", "dismissed"]),
+                and_(
+                    SuggestionStatus.status == "snoozed",
+                    SuggestionStatus.snooze_until.isnot(None),
+                    SuggestionStatus.snooze_until > today_str,
+                ),
+            )
+        )
+        .all()
+    )
+    hidden_hashes = {row[0] for row in hidden_rows}
 
     suggestions = [s for s in suggestions if s["hash"] not in hidden_hashes]
 

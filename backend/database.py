@@ -61,7 +61,7 @@ def _run_migrations(connection):
     if "deleted_at" not in os_cols:
         cursor.execute("ALTER TABLE organic_sales ADD COLUMN deleted_at TEXT")
 
-    # Sprint 13.3: Create performance indexes (idempotent)
+    # Sprint 13.3 + Batch 15: Create performance indexes (idempotent)
     _indexes = [
         ("ix_placement_campaign_date", "placement_records", "campaign_id, date"),
         ("ix_cdaily_campaign_date", "campaign_daily_records", "campaign_id, date"),
@@ -69,6 +69,13 @@ def _run_migrations(connection):
         ("ix_oplog_campaign_date", "operation_logs", "campaign_id, date"),
         ("ix_sterm_campaign", "search_term_reports", "campaign_id"),
         ("ix_note_campaign", "notes", "campaign_id"),
+        # Batch 15 perf: single-column indexes for date-only queries (dashboard, summary)
+        ("ix_placement_date", "placement_records", "date"),
+        # Batch 15 perf: placement_type filter used in placements endpoint
+        ("ix_placement_type", "placement_records", "placement_type"),
+        # Batch 15 perf: soft-delete filtering
+        ("ix_notes_deleted_at", "notes", "deleted_at"),
+        ("ix_organic_sales_deleted_at", "organic_sales", "deleted_at"),
     ]
     for idx_name, table, cols in _indexes:
         cursor.execute(f"CREATE INDEX IF NOT EXISTS {idx_name} ON {table} ({cols})")
