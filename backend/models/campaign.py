@@ -25,6 +25,7 @@ class Campaign(Base, TimestampMixin):
     portfolio = Column(String)  # ZP-TP01-DBL-LOT01
     status = Column(String, nullable=False, default="Delivering")
     status_updated_at = Column(String)
+    tags = Column(String)  # JSON array of tag strings, e.g. '["新品", "清库存"]'
 
     ad_groups = relationship("AdGroup", back_populates="campaign")
     placement_records = relationship("PlacementRecord", back_populates="campaign")

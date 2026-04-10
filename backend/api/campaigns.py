@@ -1,7 +1,9 @@
 """广告活动 API"""
 
+import json
 from typing import Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -78,8 +80,46 @@ def list_campaigns(
         row["impressions"] = kpi.get("impressions", 0)
         row["clicks"] = kpi.get("clicks", 0)
         row["daily_budget"] = budget_map.get(c.id)
+        # Parse tags JSON
+        try:
+            row["tags"] = json.loads(c.tags) if c.tags else []
+        except (json.JSONDecodeError, TypeError):
+            row["tags"] = []
         result.append(row)
     return result
+
+
+class CampaignTagsUpdate(BaseModel):
+    tags: list[str]
+
+
+@router.put("/{campaign_id}/tags")
+def update_campaign_tags(
+    campaign_id: int,
+    body: CampaignTagsUpdate,
+    db: Session = Depends(get_db),
+):
+    """Update campaign tags (replaces existing)"""
+    campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    campaign.tags = json.dumps(body.tags, ensure_ascii=False) if body.tags else None
+    db.commit()
+    return {"id": campaign.id, "tags": body.tags}
+
+
+@router.get("/tags/all")
+def list_all_tags(db: Session = Depends(get_db)):
+    """Get distinct list of all tags across campaigns"""
+    rows = db.query(Campaign.tags).filter(Campaign.tags.isnot(None)).all()
+    tag_set = set()
+    for (tags_json,) in rows:
+        try:
+            parsed = json.loads(tags_json) if tags_json else []
+            tag_set.update(parsed)
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return sorted(tag_set)
 
 
 @router.get("/{campaign_id}", response_model=CampaignDetail)

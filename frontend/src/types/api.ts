@@ -19,6 +19,7 @@ export interface Campaign {
 	impressions?: number;
 	clicks?: number;
 	daily_budget?: number | null;
+	tags?: string[];
 }
 
 export interface PlacementRecord {
@@ -248,4 +249,5 @@ export interface Suggestion {
 	description: string;
 	action: string;
 	metric: Record<string, string | number>;
+	hash?: string;
 }

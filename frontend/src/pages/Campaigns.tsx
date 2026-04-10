@@ -1,6 +1,18 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Progress, Table, Tag, Tabs, Tooltip } from "antd";
+import {
+	Button,
+	message,
+	Modal,
+	Progress,
+	Select,
+	Space,
+	Table,
+	Tag,
+	Tabs,
+	Tooltip,
+} from "antd";
+import { TagsOutlined } from "@ant-design/icons";
 import api from "../api/client";
 import EmptyState from "../components/EmptyState";
 import FilterToolbar from "../components/FilterToolbar";
@@ -35,6 +47,10 @@ export default function Campaigns() {
 	const [campaigns, setCampaigns] = useState<Campaign[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [adTypeFilter, setAdTypeFilter] = useState("all");
+	const [allTags, setAllTags] = useState<string[]>([]);
+	const [tagFilter, setTagFilter] = useState<string[]>([]);
+	const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
+	const [editingTags, setEditingTags] = useState<string[]>([]);
 	const navigate = useNavigate();
 	const { dateFrom, dateTo, marketplaceId, buildQueryString } =
 		useFilterParams();
@@ -48,12 +64,46 @@ export default function Campaigns() {
 			.finally(() => setLoading(false));
 	}, [buildQueryString]);
 
+	const fetchTags = useCallback(() => {
+		api
+			.get<string[]>("/campaigns/tags/all")
+			.then((res) => setAllTags(res.data))
+			.catch(() => {});
+	}, []);
+
 	useEffect(fetchData, [dateFrom, dateTo, marketplaceId, fetchData]);
+	useEffect(fetchTags, [fetchTags]);
 
 	const filteredCampaigns = useMemo(() => {
-		if (adTypeFilter === "all") return campaigns;
-		return campaigns.filter((c) => c.ad_type === adTypeFilter);
-	}, [campaigns, adTypeFilter]);
+		return campaigns.filter((c) => {
+			if (adTypeFilter !== "all" && c.ad_type !== adTypeFilter) return false;
+			if (tagFilter.length > 0) {
+				const cTags = c.tags || [];
+				if (!tagFilter.some((t) => cTags.includes(t))) return false;
+			}
+			return true;
+		});
+	}, [campaigns, adTypeFilter, tagFilter]);
+
+	const openTagEditor = (campaign: Campaign) => {
+		setEditingCampaign(campaign);
+		setEditingTags(campaign.tags || []);
+	};
+
+	const saveCampaignTags = async () => {
+		if (!editingCampaign) return;
+		try {
+			await api.put(`/campaigns/${editingCampaign.id}/tags`, {
+				tags: editingTags,
+			});
+			message.success("标签已保存");
+			setEditingCampaign(null);
+			fetchData();
+			fetchTags();
+		} catch {
+			message.error("保存失败");
+		}
+	};
 
 	const columns = [
 		{
@@ -178,6 +228,32 @@ export default function Campaigns() {
 			width: 80,
 			render: (v: number | null) => (v ? `$${v}` : "-"),
 		},
+		{
+			title: "标签",
+			dataIndex: "tags",
+			key: "tags",
+			width: 180,
+			render: (tags: string[] | undefined, record: Campaign) => (
+				<div
+					style={{ cursor: "pointer", minHeight: 22 }}
+					onClick={() => openTagEditor(record)}
+				>
+					{tags && tags.length > 0 ? (
+						<Space size={4} wrap>
+							{tags.map((t) => (
+								<Tag key={t} color="purple" style={{ margin: 0 }}>
+									{t}
+								</Tag>
+							))}
+						</Space>
+					) : (
+						<Button size="small" type="text" icon={<TagsOutlined />}>
+							添加标签
+						</Button>
+					)}
+				</div>
+			),
+		},
 	];
 
 	if (loading) return <PageSkeleton variant="table" />;
@@ -204,17 +280,54 @@ export default function Campaigns() {
 				/>
 				<FilterToolbar showCampaignFilter={false} />
 				<PageHelp
-					title="广告活��帮助"
-					content="显示所有已导入的广告活动及其绩效指标。点击活动名称查看详情。ACOS 红色表示 >50%，绿色表示 <25%。ROAS 绿色表示 >3。"
+					title="广告活动帮助"
+					content="显示所有已导入的广告活动及其绩效指标。点击活动名称查看详情。ACOS 红色表示 >50%，绿色表示 <25%。ROAS 绿色表示 >3。点击标签列编辑标签。"
 				/>
 			</div>
+			{allTags.length > 0 && (
+				<div style={{ marginBottom: 12 }}>
+					<Space size="small" align="center">
+						<TagsOutlined style={{ color: "#9CA3AF" }} />
+						<span style={{ fontSize: 13 }}>按标签筛选:</span>
+						<Select
+							mode="multiple"
+							allowClear
+							placeholder="选择标签"
+							value={tagFilter}
+							onChange={setTagFilter}
+							style={{ minWidth: 280 }}
+							options={allTags.map((t) => ({ label: t, value: t }))}
+						/>
+					</Space>
+				</div>
+			)}
 			<Table
 				columns={columns}
 				dataSource={filteredCampaigns}
 				rowKey="id"
 				size="middle"
-				scroll={{ x: 1100 }}
+				scroll={{ x: 1280 }}
 			/>
+			<Modal
+				title={`编辑标签 — ${editingCampaign?.name || ""}`}
+				open={editingCampaign !== null}
+				onOk={saveCampaignTags}
+				onCancel={() => setEditingCampaign(null)}
+				okText="保存"
+				cancelText="取消"
+			>
+				<p style={{ color: "#9CA3AF", fontSize: 12, marginBottom: 8 }}>
+					输入标签名称，回车添加。可选择已有标签或创建新标签。
+				</p>
+				<Select
+					mode="tags"
+					style={{ width: "100%" }}
+					placeholder="例如: 新品, 清库存, 夏季款"
+					value={editingTags}
+					onChange={setEditingTags}
+					options={allTags.map((t) => ({ label: t, value: t }))}
+				/>
+			</Modal>
 		</div>
 	);
 }

@@ -11,6 +11,7 @@ from backend.models.note import Note
 from backend.models.rule import Rule
 from backend.models.organic_sales import OrganicSales
 from backend.models.keyword_action import KeywordAction
+from backend.models.suggestion_status import SuggestionStatus
 
 __all__ = [
     "Base",
@@ -30,4 +31,5 @@ __all__ = [
     "Rule",
     "OrganicSales",
     "KeywordAction",
+    "SuggestionStatus",
 ]

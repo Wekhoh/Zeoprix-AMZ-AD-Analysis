@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import { Card, Tag, Space } from "antd";
+import { Button, Card, Dropdown, Tag, Space, message } from "antd";
+import {
+	CheckOutlined,
+	ClockCircleOutlined,
+	CloseOutlined,
+} from "@ant-design/icons";
 import { Link } from "react-router-dom";
 import type { Suggestion, SuggestionSeverity } from "../types/api";
 import api from "../api/client";
@@ -41,7 +46,17 @@ function groupBySeverity(
 	return grouped;
 }
 
-function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
+function SuggestionCard({
+	suggestion,
+	onResolve,
+}: {
+	suggestion: Suggestion;
+	onResolve: (
+		s: Suggestion,
+		action: "resolved" | "dismissed" | "snoozed",
+		days?: number,
+	) => void;
+}) {
 	const config = SEVERITY_CONFIG[suggestion.severity];
 	const { isDark } = useTheme();
 	const metricEntries = suggestion.metric
@@ -115,6 +130,56 @@ function SuggestionCard({ suggestion }: { suggestion: Suggestion }) {
 					))}
 				</Space>
 			)}
+
+			<div
+				style={{
+					marginTop: 12,
+					paddingTop: 12,
+					borderTop: `1px solid ${isDark ? "#2A2F3A" : "#F0F0F0"}`,
+					display: "flex",
+					gap: 8,
+				}}
+			>
+				<Button
+					size="small"
+					icon={<CheckOutlined />}
+					onClick={() => onResolve(suggestion, "resolved")}
+				>
+					标记已处理
+				</Button>
+				<Dropdown
+					menu={{
+						items: [
+							{
+								key: "1",
+								label: "延后 1 天",
+								onClick: () => onResolve(suggestion, "snoozed", 1),
+							},
+							{
+								key: "7",
+								label: "延后 7 天",
+								onClick: () => onResolve(suggestion, "snoozed", 7),
+							},
+							{
+								key: "30",
+								label: "延后 30 天",
+								onClick: () => onResolve(suggestion, "snoozed", 30),
+							},
+						],
+					}}
+				>
+					<Button size="small" icon={<ClockCircleOutlined />}>
+						延后
+					</Button>
+				</Dropdown>
+				<Button
+					size="small"
+					icon={<CloseOutlined />}
+					onClick={() => onResolve(suggestion, "dismissed")}
+				>
+					永久忽略
+				</Button>
+			</div>
 		</Card>
 	);
 }
@@ -129,10 +194,42 @@ export default function Suggestions() {
 		api
 			.get<Suggestion[]>(`/analysis/suggestions${buildQueryString()}`)
 			.then((res) => setSuggestions(res.data))
+			.catch(() => {})
 			.finally(() => setLoading(false));
 	}, [buildQueryString]);
 
 	useEffect(fetchData, [dateFrom, dateTo, fetchData]);
+
+	const handleResolve = async (
+		s: Suggestion,
+		action: "resolved" | "dismissed" | "snoozed",
+		days?: number,
+	) => {
+		if (!s.hash) {
+			message.warning("无法识别该建议");
+			return;
+		}
+		try {
+			await api.post("/analysis/suggestions/resolve", {
+				hash: s.hash,
+				campaign_id: s.campaign_id,
+				suggestion_type: s.type,
+				action,
+				snooze_days: days,
+			});
+			const actionLabel =
+				action === "resolved"
+					? "已标记为已处理"
+					: action === "dismissed"
+						? "已永久忽略"
+						: `已延后 ${days || 7} 天`;
+			message.success(actionLabel);
+			// Optimistically remove from list
+			setSuggestions((prev) => prev.filter((x) => x.hash !== s.hash));
+		} catch {
+			message.error("操作失败");
+		}
+	};
 
 	if (loading) return <PageSkeleton variant="cards" />;
 
@@ -172,7 +269,11 @@ export default function Suggestions() {
 							{config.label} ({items.length})
 						</h3>
 						{items.map((s, idx) => (
-							<SuggestionCard key={`${severity}-${idx}`} suggestion={s} />
+							<SuggestionCard
+								key={s.hash || `${severity}-${idx}`}
+								suggestion={s}
+								onResolve={handleResolve}
+							/>
 						))}
 					</div>
 				);

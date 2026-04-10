@@ -7,8 +7,15 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.config import settings
-from backend.models import Campaign, PlacementRecord
+from backend.models import Campaign, PlacementRecord, SuggestionStatus
 from backend.services.kpi_calculator import calc_roas, calc_acos
+
+
+def _suggestion_hash(suggestion_type: str, campaign_id: int | None) -> str:
+    """Stable identifier for a suggestion used for lifecycle tracking."""
+    return f"{suggestion_type}:{campaign_id or 0}"
+
+
 from backend.utils.amazon_rules import (
     get_attribution_window,
     calc_max_possible_cpc,
@@ -270,6 +277,24 @@ def generate_suggestions(
                     },
                 }
             )
+
+    # Add stable hashes for lifecycle tracking
+    for s in suggestions:
+        s["hash"] = _suggestion_hash(s["type"], s.get("campaign_id"))
+
+    # Filter out resolved/dismissed/active-snoozed suggestions
+    from datetime import date
+
+    today_str = date.today().isoformat()
+    status_rows = db.query(SuggestionStatus).all()
+    hidden_hashes = set()
+    for st in status_rows:
+        if st.status in ("resolved", "dismissed"):
+            hidden_hashes.add(st.suggestion_hash)
+        elif st.status == "snoozed" and st.snooze_until and st.snooze_until > today_str:
+            hidden_hashes.add(st.suggestion_hash)
+
+    suggestions = [s for s in suggestions if s["hash"] not in hidden_hashes]
 
     # 按优先级排序
     suggestions.sort(key=lambda x: x["priority"])

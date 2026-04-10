@@ -43,6 +43,12 @@ def _run_migrations(connection):
     if "category_key" not in product_cols:
         cursor.execute("ALTER TABLE products ADD COLUMN category_key TEXT")
 
+    # Add tags column to campaigns for labeling/grouping
+    cursor.execute("PRAGMA table_info(campaigns)")
+    campaign_cols = {row[1] for row in cursor.fetchall()}
+    if "tags" not in campaign_cols:
+        cursor.execute("ALTER TABLE campaigns ADD COLUMN tags TEXT")
+
     # Sprint 13.3: Create performance indexes (idempotent)
     _indexes = [
         ("ix_placement_campaign_date", "placement_records", "campaign_id, date"),
