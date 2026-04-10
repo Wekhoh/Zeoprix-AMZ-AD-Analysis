@@ -17,10 +17,12 @@ import {
 	FileTextOutlined,
 	CheckCircleOutlined,
 	QuestionCircleOutlined,
+	DatabaseOutlined,
 } from "@ant-design/icons";
 import type { UploadFile } from "antd";
 import api from "../api/client";
 import PageHelp from "../components/PageHelp";
+import type { InventoryImportResult } from "../types/api";
 
 interface ImportDetail {
 	message: string;
@@ -91,8 +93,11 @@ const PREVIEW_COLUMNS = [
 export default function Import() {
 	const [csvResult, setCsvResult] = useState<ImportResult | null>(null);
 	const [logResult, setLogResult] = useState<ImportResult | null>(null);
+	const [inventoryResult, setInventoryResult] =
+		useState<InventoryImportResult | null>(null);
 	const [csvLoading, setCsvLoading] = useState(false);
 	const [logLoading, setLogLoading] = useState(false);
+	const [inventoryLoading, setInventoryLoading] = useState(false);
 
 	// Preview state
 	const [csvStep, setCsvStep] = useState(0);
@@ -170,6 +175,37 @@ export default function Import() {
 			message.error("日志导入失败");
 		} finally {
 			setLogLoading(false);
+		}
+	};
+
+	const handleInventoryUpload = async (fileList: UploadFile[]) => {
+		if (!fileList.length) return;
+		setInventoryLoading(true);
+		const formData = new FormData();
+		for (const f of fileList) {
+			if (f.originFileObj) formData.append("files", f.originFileObj);
+		}
+		try {
+			const res = await api.post<InventoryImportResult>(
+				"/inventory/import",
+				formData,
+			);
+			setInventoryResult(res.data);
+			if (res.data.error) {
+				message.warning(res.data.error);
+			} else {
+				const riskHint =
+					res.data.critical_count > 0
+						? `，危急 ${res.data.critical_count}`
+						: "";
+				message.success(
+					`库存导入完成: 新增 ${res.data.imported}，更新 ${res.data.updated}${riskHint}`,
+				);
+			}
+		} catch {
+			message.error("库存导入失败");
+		} finally {
+			setInventoryLoading(false);
 		}
 	};
 
@@ -252,6 +288,21 @@ export default function Import() {
 										点击 <strong>历史记录</strong> 标签
 									</li>
 									<li>选择日期范围，点击导出</li>
+								</ol>
+								<h4>库存健康报告（CSV）</h4>
+								<ol style={{ paddingLeft: 20 }}>
+									<li>
+										Seller Central &rarr; <strong>报告</strong> &rarr;{" "}
+										<strong>库存报告</strong>
+									</li>
+									<li>
+										选择 <strong>库存健康</strong> 或 <strong>FBA 库存</strong>
+									</li>
+									<li>点击下载 CSV / TSV 文件</li>
+									<li>
+										支持英文/中文列名：SKU / 商家 SKU、Available /
+										可售数量、Days of Supply / 供货天数
+									</li>
 								</ol>
 							</div>
 						),
@@ -403,7 +454,7 @@ export default function Import() {
 					</Card>
 				</Col>
 				<Col span={12}>
-					<Card title="上传操作日志 TXT">
+					<Card title="上传操作日志 TXT" style={{ marginBottom: 16 }}>
 						<Upload.Dragger
 							multiple
 							accept=".txt"
@@ -433,6 +484,55 @@ export default function Import() {
 									size="small"
 									pagination={false}
 								/>
+							</div>
+						)}
+					</Card>
+					<Card title="上传库存健康报告 CSV">
+						<Upload.Dragger
+							multiple
+							accept=".csv,.tsv,.txt"
+							beforeUpload={() => false}
+							onChange={({ fileList }) => handleInventoryUpload(fileList)}
+							showUploadList={false}
+						>
+							<p className="ant-upload-drag-icon">
+								<DatabaseOutlined style={{ fontSize: 48, color: "#faad14" }} />
+							</p>
+							<p>点击或拖拽库存 CSV 文件到此区域</p>
+							<p style={{ color: "#9CA3AF" }}>
+								来自 Seller Central → 报告 → 库存 → 库存健康
+							</p>
+						</Upload.Dragger>
+						{inventoryLoading && <p style={{ marginTop: 16 }}>导入中...</p>}
+						{inventoryResult && (
+							<div style={{ marginTop: 16 }}>
+								{inventoryResult.error ? (
+									<Tag color="red">{inventoryResult.error}</Tag>
+								) : (
+									<>
+										<p style={{ marginBottom: 8 }}>
+											新增: <strong>{inventoryResult.imported}</strong> | 更新:{" "}
+											<strong>{inventoryResult.updated}</strong> | 跳过:{" "}
+											<strong>{inventoryResult.skipped}</strong>
+										</p>
+										<Space wrap>
+											{inventoryResult.critical_count > 0 && (
+												<Tag color="red">
+													危急 {inventoryResult.critical_count}
+												</Tag>
+											)}
+											{inventoryResult.warning_count > 0 && (
+												<Tag color="orange">
+													预警 {inventoryResult.warning_count}
+												</Tag>
+											)}
+											{inventoryResult.critical_count === 0 &&
+												inventoryResult.warning_count === 0 && (
+													<Tag color="green">无预警 SKU</Tag>
+												)}
+										</Space>
+									</>
+								)}
 							</div>
 						)}
 					</Card>

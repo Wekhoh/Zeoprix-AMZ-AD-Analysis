@@ -253,6 +253,28 @@ export default function Dashboard() {
 				/>
 			)}
 
+			{data.inventory_status?.has_data && data.inventory_status.message && (
+				<Alert
+					type={data.inventory_status.critical_count > 0 ? "error" : "warning"}
+					showIcon
+					message={data.inventory_status.message}
+					description={
+						data.inventory_status.last_import_date
+							? `库存快照日期: ${data.inventory_status.last_import_date}`
+							: undefined
+					}
+					action={
+						<Link to="/import">
+							<Button size="small" type="primary">
+								更新库存
+							</Button>
+						</Link>
+					}
+					style={{ marginBottom: 16 }}
+					closable
+				/>
+			)}
+
 			<Row gutter={16} style={{ marginBottom: 24 }}>
 				<Col span={data.tacos?.has_data ? 4 : 6}>
 					<Card>
@@ -398,7 +420,9 @@ export default function Dashboard() {
 								? `ACOS ${(alert.value * 100).toFixed(1)}%`
 								: alert.type === "high_roas"
 									? `ROAS ${alert.value}`
-									: `花费 $${alert.value}`;
+									: alert.type === "inventory_risk"
+										? `库存 ${alert.value} 天`
+										: `花费 $${alert.value}`;
 						return `${alert.campaign_name} · ${metric}`;
 					};
 

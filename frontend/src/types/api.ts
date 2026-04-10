@@ -95,11 +95,60 @@ export interface TopCampaign {
 }
 
 export interface DashboardAlert {
-	type: "high_acos" | "zero_orders" | "high_roas";
+	type: "high_acos" | "zero_orders" | "high_roas" | "inventory_risk";
 	severity: "warning" | "danger" | "success";
 	campaign_name: string;
 	value: number;
 	message: string;
+}
+
+export interface InventorySnapshot {
+	id: number;
+	date: string;
+	sku: string;
+	asin: string | null;
+	units_available: number;
+	units_inbound: number;
+	units_reserved: number;
+	days_of_supply: number | null;
+	alert_level: "critical" | "warning" | "ok" | "unknown";
+}
+
+export interface InventoryRiskSKU {
+	sku: string;
+	asin: string | null;
+	days_of_supply: number | null;
+	units_available: number;
+	alert_level: "critical" | "warning" | "ok" | "unknown";
+}
+
+export interface InventoryRiskSummary {
+	last_import_date: string | null;
+	critical_count: number;
+	warning_count: number;
+	ok_count: number;
+	unknown_count: number;
+	top_risk_skus: InventoryRiskSKU[];
+}
+
+export interface InventoryStatus {
+	has_data: boolean;
+	last_import_date: string | null;
+	critical_count: number;
+	warning_count: number;
+	message?: string | null;
+}
+
+export interface InventoryImportResult {
+	imported: number;
+	updated: number;
+	skipped: number;
+	critical_count: number;
+	warning_count: number;
+	details?: Array<
+		{ file: string | undefined; error?: string } & Record<string, unknown>
+	>;
+	error?: string;
 }
 
 export interface ProfitData {
@@ -131,6 +180,7 @@ export interface DashboardData {
 	profit: ProfitData;
 	tacos: TacosData;
 	freshness?: DataFreshness;
+	inventory_status?: InventoryStatus;
 }
 
 export interface SummaryRow {
