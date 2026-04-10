@@ -2,6 +2,8 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
 	Button,
+	Dropdown,
+	Input,
 	message,
 	Modal,
 	Progress,
@@ -12,7 +14,11 @@ import {
 	Tabs,
 	Tooltip,
 } from "antd";
-import { TagsOutlined } from "@ant-design/icons";
+import {
+	BookOutlined,
+	CloseCircleOutlined,
+	TagsOutlined,
+} from "@ant-design/icons";
 import api from "../api/client";
 import EmptyState from "../components/EmptyState";
 import FilterToolbar from "../components/FilterToolbar";
@@ -20,6 +26,12 @@ import PageHelp from "../components/PageHelp";
 import PageSkeleton from "../components/PageSkeleton";
 import { useFilterParams } from "../hooks/useFilterParams";
 import type { Campaign } from "../types/api";
+
+interface FilterPreset {
+	name: string;
+	adType: string;
+	tags: string[];
+}
 
 const AD_TYPE_COLOR: Record<string, string> = {
 	SP: "blue",
@@ -51,6 +63,16 @@ export default function Campaigns() {
 	const [tagFilter, setTagFilter] = useState<string[]>([]);
 	const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
 	const [editingTags, setEditingTags] = useState<string[]>([]);
+	const [presets, setPresets] = useState<FilterPreset[]>(() => {
+		try {
+			const saved = localStorage.getItem("campaigns_filter_presets");
+			return saved ? JSON.parse(saved) : [];
+		} catch {
+			return [];
+		}
+	});
+	const [savePresetOpen, setSavePresetOpen] = useState(false);
+	const [newPresetName, setNewPresetName] = useState("");
 	const navigate = useNavigate();
 	const { dateFrom, dateTo, marketplaceId, buildQueryString } =
 		useFilterParams();
@@ -103,6 +125,39 @@ export default function Campaigns() {
 		} catch {
 			message.error("保存失败");
 		}
+	};
+
+	const persistPresets = (next: FilterPreset[]) => {
+		setPresets(next);
+		localStorage.setItem("campaigns_filter_presets", JSON.stringify(next));
+	};
+
+	const saveCurrentAsPreset = () => {
+		if (!newPresetName.trim()) {
+			message.warning("请输入预设名称");
+			return;
+		}
+		const preset: FilterPreset = {
+			name: newPresetName.trim(),
+			adType: adTypeFilter,
+			tags: tagFilter,
+		};
+		const existing = presets.filter((p) => p.name !== preset.name);
+		persistPresets([...existing, preset]);
+		message.success(`已保存预设「${preset.name}」`);
+		setSavePresetOpen(false);
+		setNewPresetName("");
+	};
+
+	const applyPreset = (preset: FilterPreset) => {
+		setAdTypeFilter(preset.adType);
+		setTagFilter(preset.tags);
+		message.success(`已应用「${preset.name}」`);
+	};
+
+	const deletePreset = (name: string) => {
+		persistPresets(presets.filter((p) => p.name !== name));
+		message.success(`已删除预设「${name}」`);
 	};
 
 	const columns = [
@@ -284,23 +339,86 @@ export default function Campaigns() {
 					content="显示所有已导入的广告活动及其绩效指标。点击活动名称查看详情。ACOS 红色表示 >50%，绿色表示 <25%。ROAS 绿色表示 >3。点击标签列编辑标签。"
 				/>
 			</div>
-			{allTags.length > 0 && (
-				<div style={{ marginBottom: 12 }}>
-					<Space size="small" align="center">
-						<TagsOutlined style={{ color: "#9CA3AF" }} />
-						<span style={{ fontSize: 13 }}>按标签筛选:</span>
-						<Select
-							mode="multiple"
-							allowClear
-							placeholder="选择标签"
-							value={tagFilter}
-							onChange={setTagFilter}
-							style={{ minWidth: 280 }}
-							options={allTags.map((t) => ({ label: t, value: t }))}
-						/>
-					</Space>
-				</div>
-			)}
+			<div style={{ marginBottom: 12 }}>
+				<Space size="small" align="center" wrap>
+					{allTags.length > 0 && (
+						<>
+							<TagsOutlined style={{ color: "#9CA3AF" }} />
+							<span style={{ fontSize: 13 }}>按标签筛选:</span>
+							<Select
+								mode="multiple"
+								allowClear
+								placeholder="选择标签"
+								value={tagFilter}
+								onChange={setTagFilter}
+								style={{ minWidth: 280 }}
+								options={allTags.map((t) => ({ label: t, value: t }))}
+							/>
+						</>
+					)}
+					<Dropdown
+						menu={{
+							items: [
+								{
+									key: "save",
+									icon: <BookOutlined />,
+									label: "保存当前筛选为预设...",
+									onClick: () => setSavePresetOpen(true),
+								},
+								...(presets.length > 0
+									? [
+											{ type: "divider" as const },
+											...presets.map((p) => ({
+												key: p.name,
+												label: (
+													<Space>
+														<span>{p.name}</span>
+														<CloseCircleOutlined
+															style={{ color: "#ff4d4f" }}
+															onClick={(e: React.MouseEvent) => {
+																e.stopPropagation();
+																deletePreset(p.name);
+															}}
+														/>
+													</Space>
+												),
+												onClick: () => applyPreset(p),
+											})),
+										]
+									: []),
+							],
+						}}
+					>
+						<Button icon={<BookOutlined />}>
+							筛选预设 {presets.length > 0 ? `(${presets.length})` : ""}
+						</Button>
+					</Dropdown>
+				</Space>
+			</div>
+
+			<Modal
+				title="保存筛选预设"
+				open={savePresetOpen}
+				onOk={saveCurrentAsPreset}
+				onCancel={() => {
+					setSavePresetOpen(false);
+					setNewPresetName("");
+				}}
+				okText="保存"
+				cancelText="取消"
+			>
+				<p style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 8 }}>
+					当前筛选: {adTypeFilter === "all" ? "全部类型" : adTypeFilter}
+					{tagFilter.length > 0 ? ` + 标签 [${tagFilter.join(", ")}]` : ""}
+				</p>
+				<Input
+					placeholder="预设名称，例如: 高花费 SP 活动"
+					value={newPresetName}
+					onChange={(e) => setNewPresetName(e.target.value)}
+					onPressEnter={saveCurrentAsPreset}
+					autoFocus
+				/>
+			</Modal>
 			<Table
 				columns={columns}
 				dataSource={filteredCampaigns}

@@ -174,15 +174,67 @@ export default function AppLayout() {
 	}, []);
 
 	useEffect(() => {
+		let gPressed = false;
+		let gTimer: ReturnType<typeof setTimeout> | null = null;
+
+		const isEditable = (el: EventTarget | null): boolean => {
+			if (!el || !(el instanceof HTMLElement)) return false;
+			const tag = el.tagName;
+			return (
+				tag === "INPUT" ||
+				tag === "TEXTAREA" ||
+				tag === "SELECT" ||
+				el.isContentEditable
+			);
+		};
+
+		const vimNavMap: Record<string, string> = {
+			d: "/",
+			i: "/import",
+			c: "/campaigns",
+			p: "/placements",
+			l: "/operation-logs",
+			s: "/summaries",
+			a: "/analysis",
+			t: "/search-terms",
+			b: "/suggestions",
+			r: "/rules",
+			e: "/settings",
+		};
+
 		const handleKeyDown = (e: KeyboardEvent) => {
 			if ((e.ctrlKey || e.metaKey) && e.key === "k") {
 				e.preventDefault();
 				toggleCommandPalette();
+				return;
+			}
+
+			// Skip vim nav when typing in an input
+			if (isEditable(e.target)) return;
+			if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+			if (gPressed && vimNavMap[e.key]) {
+				e.preventDefault();
+				navigate(vimNavMap[e.key]);
+				gPressed = false;
+				if (gTimer) clearTimeout(gTimer);
+				return;
+			}
+
+			if (e.key === "g") {
+				gPressed = true;
+				if (gTimer) clearTimeout(gTimer);
+				gTimer = setTimeout(() => {
+					gPressed = false;
+				}, 1000);
 			}
 		};
 		window.addEventListener("keydown", handleKeyDown);
-		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [toggleCommandPalette]);
+		return () => {
+			window.removeEventListener("keydown", handleKeyDown);
+			if (gTimer) clearTimeout(gTimer);
+		};
+	}, [toggleCommandPalette, navigate]);
 
 	const handleCollapse = (value: boolean) => {
 		setCollapsed(value);

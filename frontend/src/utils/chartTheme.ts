@@ -52,6 +52,20 @@ export const lightChartOptions = {
 	},
 };
 
+const defaultToolbox = {
+	show: true,
+	right: 20,
+	top: 0,
+	feature: {
+		saveAsImage: {
+			show: true,
+			title: "保存为图片",
+			name: "chart",
+			pixelRatio: 2,
+		},
+	},
+};
+
 export function withTheme(
 	option: Record<string, unknown>,
 	isDark: boolean,
@@ -61,6 +75,13 @@ export function withTheme(
 		...option,
 		backgroundColor: "transparent",
 		textStyle: { ...base.textStyle },
+		toolbox: {
+			...defaultToolbox,
+			iconStyle: {
+				borderColor: isDark ? "#9CA3AF" : "#6B7280",
+			},
+			...((option.toolbox as object) || {}),
+		},
 		tooltip: {
 			...base.tooltip,
 			...((option.tooltip as object) || {}),
