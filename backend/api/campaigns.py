@@ -108,6 +108,147 @@ def update_campaign_tags(
     return {"id": campaign.id, "tags": body.tags}
 
 
+class BidSimulationRequest(BaseModel):
+    new_base_bid: float
+    lookback_days: int = 30
+
+
+@router.post("/{campaign_id}/simulate-bid")
+def simulate_bid_change(
+    campaign_id: int,
+    body: BidSimulationRequest,
+    db: Session = Depends(get_db),
+):
+    """Estimate the impact of changing the campaign's base bid.
+
+    Assumptions (linear extrapolation, conservative):
+    - CPC scales proportionally with base_bid (new_cpc = old_cpc * ratio)
+    - Click volume unchanged (first-order estimate — real world may have
+      impression loss or gain, but we avoid predicting auction dynamics)
+    - CVR unchanged — conversion quality doesn't directly depend on bid
+    - Sales = clicks * cvr * avg_order_value
+
+    Returns current metrics, projected metrics, and deltas.
+    """
+    from datetime import datetime, timedelta
+
+    if body.new_base_bid <= 0:
+        raise HTTPException(status_code=400, detail="new_base_bid must be > 0")
+
+    campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    if not campaign.base_bid or campaign.base_bid <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Campaign has no base_bid configured, cannot simulate",
+        )
+
+    # Aggregate historical data (lookback_days from latest placement record)
+    latest_date = (
+        db.query(func.max(PlacementRecord.date))
+        .filter(PlacementRecord.campaign_id == campaign_id)
+        .scalar()
+    )
+    if not latest_date:
+        raise HTTPException(status_code=400, detail="No historical data for campaign")
+
+    try:
+        latest_dt = datetime.strptime(latest_date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date in records")
+
+    cutoff = (latest_dt - timedelta(days=body.lookback_days)).isoformat()
+
+    agg = (
+        db.query(
+            func.sum(PlacementRecord.impressions),
+            func.sum(PlacementRecord.clicks),
+            func.sum(PlacementRecord.spend),
+            func.sum(PlacementRecord.orders),
+            func.sum(PlacementRecord.sales),
+        )
+        .filter(
+            PlacementRecord.campaign_id == campaign_id,
+            PlacementRecord.date >= cutoff,
+        )
+        .first()
+    )
+    imp, clk, spend, orders, sales = (
+        agg[0] or 0,
+        agg[1] or 0,
+        float(agg[2] or 0),
+        agg[3] or 0,
+        float(agg[4] or 0),
+    )
+
+    if clk == 0 or spend == 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Insufficient data in last {body.lookback_days} days (no clicks)",
+        )
+
+    current_cpc = spend / clk
+    current_cvr = orders / clk if clk > 0 else 0
+    current_acos = spend / sales if sales > 0 else None
+    current_roas = sales / spend if spend > 0 else None
+
+    # Linear projection
+    bid_ratio = body.new_base_bid / campaign.base_bid
+    projected_cpc = round(current_cpc * bid_ratio, 2)
+    projected_clicks = clk  # assumption: unchanged
+    projected_spend = round(projected_cpc * projected_clicks, 2)
+    projected_orders = round(projected_clicks * current_cvr)
+    projected_sales = sales  # assumption: sales unchanged
+    projected_acos = round(projected_spend / projected_sales, 4) if projected_sales > 0 else None
+    projected_roas = round(projected_sales / projected_spend, 2) if projected_spend > 0 else None
+
+    return {
+        "campaign_id": campaign_id,
+        "campaign_name": campaign.name,
+        "lookback_days": body.lookback_days,
+        "data_points": {
+            "from": cutoff,
+            "to": latest_date,
+            "impressions": imp,
+            "clicks": clk,
+        },
+        "current": {
+            "base_bid": campaign.base_bid,
+            "cpc": round(current_cpc, 2),
+            "cvr": round(current_cvr, 4),
+            "spend": round(spend, 2),
+            "orders": orders,
+            "sales": round(sales, 2),
+            "acos": round(current_acos, 4) if current_acos else None,
+            "roas": round(current_roas, 2) if current_roas else None,
+        },
+        "projected": {
+            "base_bid": body.new_base_bid,
+            "cpc": projected_cpc,
+            "cvr": round(current_cvr, 4),
+            "spend": projected_spend,
+            "orders": projected_orders,
+            "sales": round(projected_sales, 2),
+            "acos": projected_acos,
+            "roas": projected_roas,
+        },
+        "deltas": {
+            "spend_pct": round((projected_spend - spend) / spend * 100, 1) if spend > 0 else None,
+            "orders_pct": round((projected_orders - orders) / orders * 100, 1)
+            if orders > 0
+            else None,
+            "acos_pct": round(
+                ((projected_acos or 0) - (current_acos or 0)) / (current_acos or 1) * 100,
+                1,
+            )
+            if current_acos
+            else None,
+        },
+        "disclaimer": "此为基于历史 CPC 和 CVR 的线性估算，假设点击量不变。实际结果受广告位竞争、展示量变化等因素影响。",
+    }
+
+
 @router.get("/tags/all")
 def list_all_tags(db: Session = Depends(get_db)):
     """Get distinct list of all tags across campaigns"""
