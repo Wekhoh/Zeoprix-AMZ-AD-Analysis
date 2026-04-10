@@ -367,3 +367,94 @@ def compare_periods(
         }
 
     return {"period_a": period_a, "period_b": period_b, "deltas": deltas}
+
+
+def compare_multi_periods(
+    db: Session,
+    unit: str = "week",
+    count: int = 4,
+    end_date: str | None = None,
+    campaign_id: int | None = None,
+) -> dict:
+    """Compare KPIs across N consecutive periods (weekly or monthly).
+
+    Returns periods in chronological order (oldest first) with a time series
+    per metric, suitable for line charts.
+    """
+    from datetime import date, datetime, timedelta
+
+    if unit not in ("week", "month"):
+        unit = "week"
+    count = max(1, min(count, 52))  # safety bounds
+
+    # Determine anchor date
+    anchor = date.today()
+    if end_date:
+        try:
+            anchor = datetime.strptime(end_date, "%Y-%m-%d").date()
+        except ValueError:
+            pass
+
+    # Build period ranges (newest first, then reverse for chronological)
+    periods: list[dict] = []
+    if unit == "week":
+        # Week = 7 days ending on anchor
+        for i in range(count):
+            end = anchor - timedelta(days=7 * i)
+            start = end - timedelta(days=6)
+            periods.append(
+                {
+                    "label": f"{start.strftime('%m/%d')} - {end.strftime('%m/%d')}",
+                    "from": start.isoformat(),
+                    "to": end.isoformat(),
+                }
+            )
+    else:  # month
+        # Month = rolling 30 days for simplicity (calendar months vary)
+        for i in range(count):
+            end = anchor - timedelta(days=30 * i)
+            start = end - timedelta(days=29)
+            periods.append(
+                {
+                    "label": f"{start.strftime('%Y-%m')}",
+                    "from": start.isoformat(),
+                    "to": end.isoformat(),
+                }
+            )
+
+    periods.reverse()  # chronological order
+
+    # Fetch KPIs per period — reuse _build_kpi_row
+    metric_keys = [
+        "impressions",
+        "clicks",
+        "spend",
+        "orders",
+        "sales",
+        "ctr",
+        "cpc",
+        "roas",
+        "acos",
+        "cvr",
+    ]
+    series: dict[str, list] = {k: [] for k in metric_keys}
+
+    for period in periods:
+        q = _base_query(db, period["from"], period["to"], campaign_id)
+        agg = q.with_entities(
+            func.sum(PlacementRecord.impressions),
+            func.sum(PlacementRecord.clicks),
+            func.sum(PlacementRecord.spend),
+            func.sum(PlacementRecord.orders),
+            func.sum(PlacementRecord.sales),
+        ).first()
+        kpi = _build_kpi_row(*agg)
+        for k in metric_keys:
+            series[k].append(kpi.get(k))
+
+    return {
+        "unit": unit,
+        "count": count,
+        "periods": periods,
+        "series": series,
+    }

@@ -20,7 +20,10 @@ import {
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import "dayjs/locale/zh-cn";
+import ReactECharts from "echarts-for-react";
 import api from "../api/client";
+import { withTheme, CHART_COLORS } from "../utils/chartTheme";
+import { useTheme } from "../hooks/useTheme";
 import type { Campaign } from "../types/api";
 
 dayjs.locale("zh-cn");
@@ -72,6 +75,34 @@ export default function Analysis() {
 		(ComparisonResult & { campaign_a: string; campaign_b: string }) | null
 	>(null);
 	const [campLoading, setCampLoading] = useState(false);
+
+	// Multi-period comparison state
+	const { isDark } = useTheme();
+	const [multiUnit, setMultiUnit] = useState<"week" | "month">("week");
+	const [multiCount, setMultiCount] = useState<number>(4);
+	const [multiResult, setMultiResult] = useState<{
+		unit: string;
+		count: number;
+		periods: { label: string; from: string; to: string }[];
+		series: Record<string, (number | null)[]>;
+	} | null>(null);
+	const [multiLoading, setMultiLoading] = useState(false);
+
+	const handleMultiCompare = async () => {
+		setMultiLoading(true);
+		try {
+			const params = new URLSearchParams({
+				unit: multiUnit,
+				count: String(multiCount),
+			});
+			const res = await api.get(`/summaries/multi-period-comparison?${params}`);
+			setMultiResult(res.data);
+		} catch {
+			// axios interceptor shows error toast
+		} finally {
+			setMultiLoading(false);
+		}
+	};
 
 	useEffect(() => {
 		api
@@ -385,6 +416,192 @@ export default function Analysis() {
 								) : (
 									<Card>
 										<Empty description="选择两个广告活动并点击「对比」查看结果" />
+									</Card>
+								)}
+							</div>
+						),
+					},
+					{
+						key: "multi",
+						label: "连续对比",
+						children: (
+							<div>
+								<Card style={{ marginBottom: 24 }}>
+									<Row gutter={16} align="middle">
+										<Col>
+											<span style={{ marginRight: 8 }}>对比维度:</span>
+											<Select
+												value={multiUnit}
+												onChange={(v) => setMultiUnit(v as "week" | "month")}
+												style={{ width: 120 }}
+												options={[
+													{ value: "week", label: "按周" },
+													{ value: "month", label: "按月" },
+												]}
+											/>
+										</Col>
+										<Col>
+											<span style={{ marginRight: 8 }}>期数:</span>
+											<Select
+												value={multiCount}
+												onChange={setMultiCount}
+												style={{ width: 100 }}
+												options={[
+													{ value: 4, label: "4 期" },
+													{ value: 8, label: "8 期" },
+													{ value: 12, label: "12 期" },
+													{ value: 24, label: "24 期" },
+												]}
+											/>
+										</Col>
+										<Col>
+											<Button
+												type="primary"
+												onClick={handleMultiCompare}
+												loading={multiLoading}
+											>
+												生成对比
+											</Button>
+										</Col>
+									</Row>
+								</Card>
+								{multiResult ? (
+									<>
+										<Card title="趋势图" style={{ marginBottom: 24 }}>
+											<ReactECharts
+												option={withTheme(
+													{
+														tooltip: { trigger: "axis" as const },
+														legend: {
+															data: [
+																"花费",
+																"订单",
+																"销售额",
+																"ROAS",
+																"ACOS(%)",
+															],
+														},
+														xAxis: {
+															type: "category" as const,
+															data: multiResult.periods.map((p) => p.label),
+														},
+														yAxis: [
+															{ type: "value" as const, name: "金额/数量" },
+															{
+																type: "value" as const,
+																name: "ROAS / ACOS%",
+																position: "right" as const,
+															},
+														],
+														series: [
+															{
+																name: "花费",
+																type: "line",
+																smooth: true,
+																data: multiResult.series.spend,
+																color: CHART_COLORS[0],
+															},
+															{
+																name: "订单",
+																type: "line",
+																smooth: true,
+																data: multiResult.series.orders,
+																color: CHART_COLORS[1],
+															},
+															{
+																name: "销售额",
+																type: "line",
+																smooth: true,
+																data: multiResult.series.sales,
+																color: CHART_COLORS[2],
+															},
+															{
+																name: "ROAS",
+																type: "line",
+																yAxisIndex: 1,
+																smooth: true,
+																data: multiResult.series.roas,
+																color: CHART_COLORS[3],
+															},
+															{
+																name: "ACOS(%)",
+																type: "line",
+																yAxisIndex: 1,
+																smooth: true,
+																data: multiResult.series.acos?.map((v) =>
+																	v != null
+																		? Number((v * 100).toFixed(2))
+																		: null,
+																),
+																color: CHART_COLORS[4],
+															},
+														],
+													},
+													isDark,
+												)}
+												style={{ height: 380 }}
+											/>
+										</Card>
+										<Card title="明细数据">
+											<Table
+												columns={[
+													{
+														title: "期间",
+														dataIndex: "label",
+														key: "label",
+														width: 180,
+													},
+													{
+														title: "花费",
+														dataIndex: "spend",
+														key: "spend",
+														render: (v: number | null) =>
+															v != null ? `$${v.toFixed(2)}` : "-",
+													},
+													{
+														title: "订单",
+														dataIndex: "orders",
+														key: "orders",
+													},
+													{
+														title: "销售额",
+														dataIndex: "sales",
+														key: "sales",
+														render: (v: number | null) =>
+															v != null ? `$${v.toFixed(2)}` : "-",
+													},
+													{
+														title: "ROAS",
+														dataIndex: "roas",
+														key: "roas",
+														render: (v: number | null) =>
+															v != null ? v.toFixed(2) : "-",
+													},
+													{
+														title: "ACOS",
+														dataIndex: "acos",
+														key: "acos",
+														render: (v: number | null) =>
+															v != null ? `${(v * 100).toFixed(1)}%` : "-",
+													},
+												]}
+												dataSource={multiResult.periods.map((p, i) => ({
+													key: p.label,
+													label: p.label,
+													spend: multiResult.series.spend[i],
+													orders: multiResult.series.orders[i],
+													sales: multiResult.series.sales[i],
+													roas: multiResult.series.roas[i],
+													acos: multiResult.series.acos[i],
+												}))}
+												pagination={false}
+												size="middle"
+											/>
+										</Card>
+									</>
+								) : (
+									<Card>
+										<Empty description="选择维度和期数，点击「生成对比」查看 N 期连续趋势" />
 									</Card>
 								)}
 							</div>

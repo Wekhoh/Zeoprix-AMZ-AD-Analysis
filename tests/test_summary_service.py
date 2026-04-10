@@ -5,6 +5,7 @@ from backend.services.summary_service import (
     summary_by_campaign,
     dashboard_overview,
     compare_periods,
+    compare_multi_periods,
 )
 
 
@@ -96,3 +97,37 @@ class TestComparePeriods:
         # period_a values should be 0
         assert result["period_a"]["spend"] == 0
         assert result["period_a"]["orders"] == 0
+
+
+class TestCompareMultiPeriods:
+    def test_returns_N_periods_in_chronological_order(self, db_session, seed_campaign_data):
+        result = compare_multi_periods(db_session, unit="week", count=4, end_date="2025-11-11")
+        assert result["unit"] == "week"
+        assert result["count"] == 4
+        assert len(result["periods"]) == 4
+        # Chronological order: first period "from" < last period "from"
+        first = result["periods"][0]["from"]
+        last = result["periods"][-1]["from"]
+        assert first < last
+
+    def test_series_has_one_value_per_period(self, db_session, seed_campaign_data):
+        result = compare_multi_periods(db_session, unit="week", count=4, end_date="2025-11-11")
+        for metric_key, values in result["series"].items():
+            assert len(values) == 4, f"{metric_key} should have 4 values"
+
+    def test_count_bounds_clamped(self, db_session, seed_campaign_data):
+        # count > 52 should be clamped
+        result = compare_multi_periods(db_session, unit="week", count=100, end_date="2025-11-11")
+        assert result["count"] == 52
+        # count < 1 should be clamped to 1
+        result2 = compare_multi_periods(db_session, unit="week", count=0, end_date="2025-11-11")
+        assert result2["count"] == 1
+
+    def test_invalid_unit_defaults_to_week(self, db_session, seed_campaign_data):
+        result = compare_multi_periods(db_session, unit="invalid", count=2, end_date="2025-11-11")
+        assert result["unit"] == "week"
+
+    def test_invalid_end_date_uses_today(self, db_session, seed_campaign_data):
+        # Should not crash, uses today instead
+        result = compare_multi_periods(db_session, unit="week", count=2, end_date="not-a-date")
+        assert len(result["periods"]) == 2

@@ -12,6 +12,7 @@ from backend.services.summary_service import (
     summary_by_placement,
     dashboard_overview,
     compare_periods,
+    compare_multi_periods,
 )
 
 router = APIRouter()
@@ -133,3 +134,16 @@ def get_campaign_comparison(
         "period_b": period_b,
         "deltas": deltas,
     }
+
+
+@router.get("/multi-period-comparison")
+def get_multi_period_comparison(
+    unit: str = Query("week", pattern="^(week|month)$"),
+    count: int = Query(4, ge=1, le=52),
+    end_date: Optional[str] = Query(None),
+    campaign_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db),
+):
+    """多期连续对比（周/月维度）"""
+    validate_date_param(end_date, "end_date")
+    return compare_multi_periods(db, unit, count, end_date, campaign_id)
