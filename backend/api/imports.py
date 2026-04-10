@@ -32,8 +32,11 @@ async def import_operation_log(
 
 
 @router.post("/preview")
-async def preview_import(files: list[UploadFile] = File(...)):
+async def preview_import(
+    files: list[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+):
     """Preview CSV data without importing"""
     from backend.services.import_service import preview_csv_upload
 
-    return await preview_csv_upload(files)
+    return await preview_csv_upload(files, db)

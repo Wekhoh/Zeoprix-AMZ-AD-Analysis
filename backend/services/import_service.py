@@ -300,31 +300,40 @@ def _detect_anomalies(placement_data: list[dict]) -> list[dict]:
             extreme_cpc_rows += 1
 
     if impossible_rows > 0:
-        warnings.append({
-            "level": "error",
-            "message": f"{impossible_rows} 行数据订单数 > 点击数（不可能），可能是列对齐错误",
-        })
+        warnings.append(
+            {
+                "level": "error",
+                "message": f"{impossible_rows} 行数据订单数 > 点击数（不可能），可能是列对齐错误",
+            }
+        )
     if zero_imp_with_spend > 0:
-        warnings.append({
-            "level": "warning",
-            "message": f"{zero_imp_with_spend} 行有花费但零曝光，请检查数据完整性",
-        })
+        warnings.append(
+            {
+                "level": "warning",
+                "message": f"{zero_imp_with_spend} 行有花费但零曝光，请检查数据完整性",
+            }
+        )
     if extreme_acos_rows > 0:
-        warnings.append({
-            "level": "warning",
-            "message": f"{extreme_acos_rows} 行 ACOS > 1000%，可能是单位错误或数据异常",
-        })
+        warnings.append(
+            {
+                "level": "warning",
+                "message": f"{extreme_acos_rows} 行 ACOS > 1000%，可能是单位错误或数据异常",
+            }
+        )
     if extreme_cpc_rows > 0:
-        warnings.append({
-            "level": "warning",
-            "message": f"{extreme_cpc_rows} 行 CPC > $50，请确认数据合理性",
-        })
+        warnings.append(
+            {
+                "level": "warning",
+                "message": f"{extreme_cpc_rows} 行 CPC > $50，请确认数据合理性",
+            }
+        )
 
     # Check date continuity within the file
     dates = sorted({row["date"] for row in placement_data if row.get("date")})
     if len(dates) >= 2:
         try:
             from datetime import datetime
+
             date_objs = [datetime.strptime(d, "%Y-%m-%d").date() for d in dates]
             gaps = []
             for i in range(1, len(date_objs)):
@@ -332,17 +341,117 @@ def _detect_anomalies(placement_data: list[dict]) -> list[dict]:
                 if diff > 1:
                     gaps.append(f"{date_objs[i - 1]} → {date_objs[i]} ({diff - 1} 天缺失)")
             if gaps:
-                warnings.append({
-                    "level": "info",
-                    "message": f"日期不连续: {'; '.join(gaps[:3])}{' ...' if len(gaps) > 3 else ''}",
-                })
+                warnings.append(
+                    {
+                        "level": "info",
+                        "message": f"日期不连续: {'; '.join(gaps[:3])}{' ...' if len(gaps) > 3 else ''}",
+                    }
+                )
         except (ValueError, TypeError):
             pass
 
     return warnings
 
 
-async def preview_csv_upload(files: list[UploadFile]) -> dict:
+def _detect_historical_anomalies(db, placement_data: list[dict], campaign_name: str) -> list[dict]:
+    """Compare incoming data against last 30 days of historical data for the same campaign.
+
+    Flags deviations > 300% (5x) in daily average spend / orders / sales.
+    """
+    warnings: list[dict] = []
+    if not placement_data or not campaign_name:
+        return warnings
+
+    from datetime import datetime, timedelta
+    from backend.models import Campaign, PlacementRecord
+    from sqlalchemy import func
+
+    campaign = db.query(Campaign).filter(Campaign.name == campaign_name).first()
+    if not campaign:
+        # First-time import for this campaign — no historical baseline
+        return warnings
+
+    # Incoming file: compute daily averages
+    incoming_dates = {row["date"] for row in placement_data if row.get("date")}
+    incoming_day_count = max(len(incoming_dates), 1)
+    incoming_spend = sum(row.get("spend", 0) or 0 for row in placement_data)
+    incoming_orders = sum(row.get("orders", 0) or 0 for row in placement_data)
+    incoming_sales = sum(row.get("sales", 0) or 0 for row in placement_data)
+    avg_new = {
+        "spend": incoming_spend / incoming_day_count,
+        "orders": incoming_orders / incoming_day_count,
+        "sales": incoming_sales / incoming_day_count,
+    }
+
+    # Historical baseline: last 30 days before the earliest incoming date
+    earliest_incoming = min(incoming_dates) if incoming_dates else None
+    if not earliest_incoming:
+        return warnings
+    try:
+        earliest_dt = datetime.strptime(earliest_incoming, "%Y-%m-%d").date()
+    except ValueError:
+        return warnings
+    hist_end = (earliest_dt - timedelta(days=1)).isoformat()
+    hist_start = (earliest_dt - timedelta(days=30)).isoformat()
+
+    hist_agg = (
+        db.query(
+            func.sum(PlacementRecord.spend),
+            func.sum(PlacementRecord.orders),
+            func.sum(PlacementRecord.sales),
+            func.count(func.distinct(PlacementRecord.date)),
+        )
+        .filter(
+            PlacementRecord.campaign_id == campaign.id,
+            PlacementRecord.date >= hist_start,
+            PlacementRecord.date <= hist_end,
+        )
+        .first()
+    )
+    if not hist_agg or not hist_agg[3] or hist_agg[3] < 3:
+        # Insufficient history (<3 days) — skip comparison
+        return warnings
+
+    hist_days = hist_agg[3]
+    avg_hist = {
+        "spend": float(hist_agg[0] or 0) / hist_days,
+        "orders": float(hist_agg[1] or 0) / hist_days,
+        "sales": float(hist_agg[2] or 0) / hist_days,
+    }
+
+    def _check(metric: str, label: str, threshold: float = 3.0) -> None:
+        if avg_hist[metric] < 0.01:
+            return  # too small to compare meaningfully
+        ratio = avg_new[metric] / avg_hist[metric]
+        if ratio > (1 + threshold):
+            warnings.append(
+                {
+                    "level": "warning",
+                    "message": (
+                        f"{label} 日均 {avg_new[metric]:.2f} vs 历史 {avg_hist[metric]:.2f} "
+                        f"(+{(ratio - 1) * 100:.0f}%)，请确认数据准确性"
+                    ),
+                }
+            )
+        elif ratio < (1 / (1 + threshold)):
+            warnings.append(
+                {
+                    "level": "warning",
+                    "message": (
+                        f"{label} 日均 {avg_new[metric]:.2f} vs 历史 {avg_hist[metric]:.2f} "
+                        f"({(ratio - 1) * 100:.0f}%)，可能数据缺失"
+                    ),
+                }
+            )
+
+    _check("spend", "花费")
+    _check("orders", "订单")
+    _check("sales", "销售额")
+
+    return warnings
+
+
+async def preview_csv_upload(files: list[UploadFile], db=None) -> dict:
     """Preview CSV files without writing to database"""
     previews: list[dict] = []
 
@@ -395,7 +504,16 @@ async def preview_csv_upload(files: list[UploadFile]) -> dict:
                     "columns": list(placement_data[0].keys()) if placement_data else [],
                     "sample_rows": sample_rows,
                     "ad_type": campaign_summary.get("ad_type", "SP"),
-                    "warnings": _detect_anomalies(placement_data),
+                    "warnings": (
+                        _detect_anomalies(placement_data)
+                        + (
+                            _detect_historical_anomalies(
+                                db, placement_data, campaign_summary.get("campaign_name", "")
+                            )
+                            if db is not None
+                            else []
+                        )
+                    ),
                 }
             )
 
