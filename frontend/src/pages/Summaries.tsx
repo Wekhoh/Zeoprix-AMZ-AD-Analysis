@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Tabs, Table, Spin, Button, message } from "antd";
-import { FileExcelOutlined } from "@ant-design/icons";
+import { Tabs, Table, Spin, Button, message, Space } from "antd";
+import { FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import api from "../api/client";
 import FilterToolbar from "../components/FilterToolbar";
 import { useFilterParams } from "../hooks/useFilterParams";
@@ -12,7 +12,7 @@ export default function Summaries() {
 	const [byCampaign, setByCampaign] = useState<SummaryRow[]>([]);
 	const [byPlacement, setByPlacement] = useState<SummaryRow[]>([]);
 	const [loading, setLoading] = useState(true);
-	const [exporting, setExporting] = useState(false);
+	const [exporting, setExporting] = useState<"xlsx" | "pdf" | null>(null);
 	const { dateFrom, dateTo, campaignId, marketplaceId, buildQueryString } =
 		useFilterParams();
 
@@ -34,27 +34,28 @@ export default function Summaries() {
 			.finally(() => setLoading(false));
 	}, [dateFrom, dateTo, campaignId, marketplaceId, buildQueryString]);
 
-	const handleExportExcel = async () => {
-		setExporting(true);
+	const handleExport = async (format: "xlsx" | "pdf") => {
+		setExporting(format);
 		try {
 			const qs = buildQueryString();
-			const res = await api.get(`/reports/excel${qs}`, {
+			const endpoint = format === "xlsx" ? "excel" : "pdf";
+			const res = await api.get(`/reports/${endpoint}${qs}`, {
 				responseType: "blob",
 			});
 			const url = window.URL.createObjectURL(new Blob([res.data]));
 			const link = document.createElement("a");
 			link.href = url;
-			const filename = `ad-report${dateFrom ? `_${dateFrom.format("YYYY-MM-DD")}` : ""}${dateTo ? `_${dateTo.format("YYYY-MM-DD")}` : ""}.xlsx`;
+			const filename = `ad-report${dateFrom ? `_${dateFrom.format("YYYY-MM-DD")}` : ""}${dateTo ? `_${dateTo.format("YYYY-MM-DD")}` : ""}.${format}`;
 			link.setAttribute("download", filename);
 			document.body.appendChild(link);
 			link.click();
 			link.remove();
 			window.URL.revokeObjectURL(url);
-			message.success("报告已下载");
+			message.success(`${format.toUpperCase()} 报告已下载`);
 		} catch {
 			message.error("导出失败");
 		} finally {
-			setExporting(false);
+			setExporting(null);
 		}
 	};
 
@@ -159,14 +160,25 @@ export default function Summaries() {
 					marginBottom: 16,
 				}}
 			>
-				<Button
-					type="primary"
-					icon={<FileExcelOutlined />}
-					onClick={handleExportExcel}
-					loading={exporting}
-				>
-					生成 Excel 报告
-				</Button>
+				<Space>
+					<Button
+						type="primary"
+						icon={<FileExcelOutlined />}
+						onClick={() => handleExport("xlsx")}
+						loading={exporting === "xlsx"}
+						disabled={exporting !== null}
+					>
+						Excel 报告
+					</Button>
+					<Button
+						icon={<FilePdfOutlined />}
+						onClick={() => handleExport("pdf")}
+						loading={exporting === "pdf"}
+						disabled={exporting !== null}
+					>
+						PDF 报告
+					</Button>
+				</Space>
 			</div>
 			<Tabs items={tabs} />
 		</Spin>
