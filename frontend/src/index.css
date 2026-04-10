@@ -202,3 +202,89 @@ body {
 		opacity: 1;
 	}
 }
+
+/* ============================================
+   RESPONSIVE — mobile and tablet breakpoints
+   ============================================ */
+
+/* Tablet: < 992px — reduce KPI card density */
+@media (max-width: 991px) {
+	.ant-statistic-content-value {
+		font-size: 22px !important;
+	}
+	.ant-statistic-title {
+		font-size: 11px !important;
+	}
+	.ant-layout-content {
+		padding: 16px !important;
+	}
+	/* KPI 4-col row → 2x2 grid */
+	.ant-row > .ant-col-6:not([class*="-md-"]):not([class*="-lg-"]) {
+		flex: 0 0 50% !important;
+		max-width: 50% !important;
+		margin-bottom: 12px;
+	}
+	.ant-row > .ant-col-4 {
+		flex: 0 0 50% !important;
+		max-width: 50% !important;
+		margin-bottom: 12px;
+	}
+	.ant-row > .ant-col-5 {
+		flex: 0 0 50% !important;
+		max-width: 50% !important;
+		margin-bottom: 12px;
+	}
+}
+
+/* Mobile: < 768px — aggressive compaction */
+@media (max-width: 767px) {
+	.ant-layout-sider {
+		position: fixed !important;
+		z-index: 100;
+		height: 100vh;
+		left: 0;
+		top: 0;
+	}
+	.ant-layout-sider-collapsed {
+		transform: translateX(-100%);
+	}
+	.ant-layout {
+		margin-left: 0 !important;
+	}
+	.ant-layout-content {
+		padding: 12px !important;
+	}
+	/* Single column stack */
+	.ant-row > .ant-col-6,
+	.ant-row > .ant-col-8,
+	.ant-row > .ant-col-12,
+	.ant-row > .ant-col-16 {
+		flex: 0 0 100% !important;
+		max-width: 100% !important;
+		margin-bottom: 12px;
+	}
+	.ant-statistic-content-value {
+		font-size: 20px !important;
+	}
+	/* Compact page header */
+	h1,
+	h2 {
+		font-size: 20px !important;
+	}
+	h3 {
+		font-size: 16px !important;
+	}
+	/* Breadcrumb row — shrink */
+	.ant-breadcrumb {
+		font-size: 12px;
+	}
+	/* Tables already have scroll={{ x }} so they scroll horizontally — OK */
+	.ant-table {
+		font-size: 12px;
+	}
+	/* Tabs bar more compact */
+	.ant-tabs-tab {
+		padding: 8px 12px !important;
+		font-size: 13px !important;
+	}
+}

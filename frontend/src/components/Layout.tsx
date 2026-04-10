@@ -28,8 +28,13 @@ import CommandPalette from "./CommandPalette";
 const { Sider, Content, Header } = AntLayout;
 
 const SIDEBAR_COLLAPSED_KEY = "amz-sidebar-collapsed";
+const MOBILE_BREAKPOINT = 767;
 
 function getInitialCollapsed(): boolean {
+	// Auto-collapse on mobile regardless of preference
+	if (typeof window !== "undefined" && window.innerWidth <= MOBILE_BREAKPOINT) {
+		return true;
+	}
 	const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
 	return stored === "true";
 }
@@ -171,6 +176,17 @@ export default function AppLayout() {
 
 	const toggleCommandPalette = useCallback(() => {
 		setCommandPaletteOpen((prev) => !prev);
+	}, []);
+
+	// Responsive: auto-collapse on mobile resize
+	useEffect(() => {
+		const handleResize = () => {
+			if (window.innerWidth <= MOBILE_BREAKPOINT) {
+				setCollapsed(true);
+			}
+		};
+		window.addEventListener("resize", handleResize);
+		return () => window.removeEventListener("resize", handleResize);
 	}, []);
 
 	useEffect(() => {
