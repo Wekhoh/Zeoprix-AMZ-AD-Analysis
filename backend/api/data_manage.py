@@ -18,6 +18,7 @@ from backend.models import (
     ImportHistory,
     KeywordAction,
     SuggestionStatus,
+    InventorySnapshot,
 )
 from backend.services.backup_service import create_backup
 
@@ -39,6 +40,7 @@ def get_data_stats(db: Session = Depends(get_db)):
         "notes": db.query(Note).count(),
         "organic_sales": db.query(OrganicSales).count(),
         "import_history": db.query(ImportHistory).count(),
+        "inventory_snapshots": db.query(InventorySnapshot).count(),
     }
 
 
@@ -65,6 +67,7 @@ def clear_advertising_data(db: Session = Depends(get_db)):
         (ImportHistory, "import_history"),
         (KeywordAction, "keyword_actions"),
         (SuggestionStatus, "suggestion_status"),
+        (InventorySnapshot, "inventory_snapshots"),
     ]:
         count = db.query(model).delete()
         counts[label] = count

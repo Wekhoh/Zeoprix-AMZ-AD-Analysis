@@ -165,10 +165,11 @@ def dashboard_overview(db: Session, date_from=None, date_to=None, marketplace_id
     all_campaigns.sort(key=lambda x: x["spend"], reverse=True)
     top_campaigns = all_campaigns[:5]
 
-    alerts = _generate_dashboard_alerts(all_campaigns)
+    alerts = _generate_dashboard_alerts(all_campaigns, db)
     profit_data = _calc_profit(db, kpi)
     tacos_data = _calc_tacos(db, kpi, date_from, date_to)
     freshness = _calc_data_freshness(db)
+    inventory_status = _calc_inventory_status(db)
 
     return {
         "kpi": kpi,
@@ -179,12 +180,18 @@ def dashboard_overview(db: Session, date_from=None, date_to=None, marketplace_id
         "profit": profit_data,
         "tacos": tacos_data,
         "freshness": freshness,
+        "inventory_status": inventory_status,
     }
 
 
-def _generate_dashboard_alerts(campaigns: list[dict]) -> list[dict]:
-    """Generate dashboard alerts from campaign KPI data."""
+def _generate_dashboard_alerts(campaigns: list[dict], db: Session = None) -> list[dict]:
+    """Generate dashboard alerts from campaign KPI + inventory data."""
     alerts: list[dict] = []
+
+    # Index campaign metrics by id for inventory-risk join below
+    camp_spend_by_id = {c.get("campaign_id"): c.get("spend", 0) or 0 for c in campaigns}
+    camp_name_by_id = {c.get("campaign_id"): c.get("campaign_name", "") for c in campaigns}
+
     for camp in campaigns:
         name = camp["campaign_name"]
         acos = camp.get("acos")
@@ -222,7 +229,70 @@ def _generate_dashboard_alerts(campaigns: list[dict]) -> list[dict]:
                     "message": "ROAS 优秀，可考虑增加预算",
                 }
             )
+
+    # Inventory risk alerts (Path B #1): only when campaign has active spend
+    if db is not None:
+        try:
+            from backend.services.inventory_service import get_inventory_risk_for_campaigns
+
+            risks = get_inventory_risk_for_campaigns(db)
+        except Exception:
+            risks = []
+
+        for risk in risks:
+            cid = risk.get("campaign_id")
+            spend = camp_spend_by_id.get(cid, 0)
+            if spend <= 0:
+                continue  # only alert when ad is actually spending
+            dos = risk.get("days_of_supply")
+            level = risk.get("alert_level")
+            sku = risk.get("sku", "")
+            severity = "danger" if level == "critical" else "warning"
+            dos_str = f"{dos:.1f}" if dos is not None else "未知"
+            alerts.append(
+                {
+                    "type": "inventory_risk",
+                    "severity": severity,
+                    "campaign_name": camp_name_by_id.get(cid, risk.get("campaign_name", "")),
+                    "value": round(dos, 1) if dos is not None else 0,
+                    "message": f"SKU {sku} 库存仅剩 {dos_str} 天（日花费 ${spend:.0f}），建议暂停或降价",
+                }
+            )
+
     return alerts
+
+
+def _calc_inventory_status(db: Session) -> dict:
+    """Summarize inventory status for dashboard header banner."""
+    try:
+        from backend.services.inventory_service import get_risk_summary
+
+        summary = get_risk_summary(db)
+    except Exception:
+        return {
+            "has_data": False,
+            "last_import_date": None,
+            "critical_count": 0,
+            "warning_count": 0,
+        }
+
+    has_data = bool(summary.get("last_import_date"))
+    critical = summary.get("critical_count", 0)
+    warning = summary.get("warning_count", 0)
+
+    message = None
+    if critical > 0:
+        message = f"{critical} 个 SKU 库存危急（<3 天）"
+    elif warning > 0:
+        message = f"{warning} 个 SKU 库存预警（<7 天）"
+
+    return {
+        "has_data": has_data,
+        "last_import_date": summary.get("last_import_date"),
+        "critical_count": critical,
+        "warning_count": warning,
+        "message": message,
+    }
 
 
 def _calc_profit(db: Session, kpi: dict) -> dict:
