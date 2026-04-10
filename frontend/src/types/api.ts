@@ -112,6 +112,15 @@ export interface TacosData {
 	has_data: boolean;
 }
 
+export interface DataFreshness {
+	latest_data_date: string | null;
+	last_import_at: string | null;
+	last_import_file?: string | null;
+	days_stale: number | null;
+	level: "fresh" | "warning" | "stale" | "empty" | "unknown";
+	message: string;
+}
+
 export interface DashboardData {
 	kpi: DashboardKPI;
 	daily_trend: DailyTrend[];
@@ -120,6 +129,7 @@ export interface DashboardData {
 	alerts: DashboardAlert[];
 	profit: ProfitData;
 	tacos: TacosData;
+	freshness?: DataFreshness;
 }
 
 export interface SummaryRow {

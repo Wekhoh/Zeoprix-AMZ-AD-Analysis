@@ -34,6 +34,11 @@ interface ImportResult {
 	details: ImportDetail[];
 }
 
+interface PreviewWarning {
+	level: "error" | "warning" | "info";
+	message: string;
+}
+
 interface PreviewFile {
 	filename: string;
 	campaign_name: string;
@@ -42,6 +47,7 @@ interface PreviewFile {
 	columns: string[];
 	sample_rows: Record<string, unknown>[];
 	ad_type: string;
+	warnings?: PreviewWarning[];
 	error?: string;
 }
 
@@ -313,6 +319,36 @@ export default function Import() {
 													</span>
 													<Tag color="blue">{pf.ad_type}</Tag>
 												</Space>
+												{pf.warnings && pf.warnings.length > 0 && (
+													<Space
+														direction="vertical"
+														style={{ width: "100%", marginBottom: 12 }}
+													>
+														{pf.warnings.map((w, wIdx) => (
+															<Tag
+																key={`w-${wIdx}`}
+																color={
+																	w.level === "error"
+																		? "red"
+																		: w.level === "warning"
+																			? "orange"
+																			: "blue"
+																}
+																style={{
+																	whiteSpace: "normal",
+																	padding: "4px 8px",
+																}}
+															>
+																{w.level === "error"
+																	? "错误"
+																	: w.level === "warning"
+																		? "警告"
+																		: "提示"}
+																: {w.message}
+															</Tag>
+														))}
+													</Space>
+												)}
 												<Table
 													columns={PREVIEW_COLUMNS}
 													dataSource={pf.sample_rows.map((row, i) => ({
@@ -332,6 +368,9 @@ export default function Import() {
 										type="primary"
 										onClick={handleCsvConfirmImport}
 										loading={csvLoading}
+										disabled={previewData.some((pf) =>
+											pf.warnings?.some((w) => w.level === "error"),
+										)}
 									>
 										确认导入
 									</Button>

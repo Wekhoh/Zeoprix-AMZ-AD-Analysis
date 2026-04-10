@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Alert, Card, Col, Progress, Row, Statistic, Table } from "antd";
+import {
+	Alert,
+	Button,
+	Card,
+	Col,
+	Progress,
+	Row,
+	Statistic,
+	Table,
+} from "antd";
 import {
 	DollarOutlined,
 	ShoppingCartOutlined,
@@ -71,7 +80,7 @@ export default function Dashboard() {
 							`/benchmarks/compare${qs}${sep}category=${withCategory.category_key}`,
 						)
 						.then((r) => setBenchmarkData(r.data))
-							.catch(() => setBenchmarkData(null));
+						.catch(() => setBenchmarkData(null));
 				} else {
 					setBenchmarkData(null);
 				}
@@ -208,6 +217,42 @@ export default function Dashboard() {
 				/>
 			</div>
 
+			{data.freshness && data.freshness.level !== "empty" && (
+				<Alert
+					type={
+						data.freshness.level === "fresh"
+							? "success"
+							: data.freshness.level === "warning"
+								? "warning"
+								: data.freshness.level === "stale"
+									? "error"
+									: "info"
+					}
+					showIcon
+					message={data.freshness.message}
+					description={
+						data.freshness.last_import_at
+							? `最后导入: ${data.freshness.last_import_at.slice(0, 19)}${
+									data.freshness.last_import_file
+										? ` (${data.freshness.last_import_file})`
+										: ""
+								}`
+							: undefined
+					}
+					action={
+						data.freshness.level !== "fresh" && (
+							<Link to="/import">
+								<Button size="small" type="primary">
+									去导入
+								</Button>
+							</Link>
+						)
+					}
+					style={{ marginBottom: 16 }}
+					closable
+				/>
+			)}
+
 			<Row gutter={16} style={{ marginBottom: 24 }}>
 				<Col span={data.tacos?.has_data ? 4 : 6}>
 					<Card>
@@ -307,32 +352,108 @@ export default function Dashboard() {
 				</Row>
 			)}
 
-			{data.alerts && data.alerts.length > 0 && (
-				<div
-					style={{
-						marginBottom: 24,
-						display: "flex",
-						flexDirection: "column",
-						gap: 8,
-					}}
-				>
-					{data.alerts.map((alert: DashboardAlert, idx: number) => {
-						const typeMap: Record<string, "error" | "warning" | "success"> = {
-							danger: "error",
-							warning: "warning",
-							success: "success",
-						};
-						return (
-							<Alert
-								key={`${alert.type}-${alert.campaign_name}-${idx}`}
-								type={typeMap[alert.severity] ?? "info"}
-								showIcon
-								message={`${alert.campaign_name} - ${alert.message} (${alert.type === "high_acos" ? `ACOS: ${(alert.value * 100).toFixed(1)}%` : alert.type === "high_roas" ? `ROAS: ${alert.value}` : `花费: $${alert.value}`})`}
-							/>
-						);
-					})}
-				</div>
-			)}
+			{data.alerts &&
+				data.alerts.length > 0 &&
+				(() => {
+					const groups = {
+						danger: data.alerts.filter(
+							(a: DashboardAlert) => a.severity === "danger",
+						),
+						warning: data.alerts.filter(
+							(a: DashboardAlert) => a.severity === "warning",
+						),
+						success: data.alerts.filter(
+							(a: DashboardAlert) => a.severity === "success",
+						),
+					};
+					const sections: {
+						key: "danger" | "warning" | "success";
+						title: string;
+						color: string;
+						items: DashboardAlert[];
+					}[] = [
+						{
+							key: "danger",
+							title: "立即处理",
+							color: "#ff4d4f",
+							items: groups.danger,
+						},
+						{
+							key: "warning",
+							title: "今天处理",
+							color: "#faad14",
+							items: groups.warning,
+						},
+						{
+							key: "success",
+							title: "扩量机会",
+							color: "#52c41a",
+							items: groups.success,
+						},
+					].filter((s) => s.items.length > 0);
+
+					const formatAlertMsg = (alert: DashboardAlert): string => {
+						const metric =
+							alert.type === "high_acos"
+								? `ACOS ${(alert.value * 100).toFixed(1)}%`
+								: alert.type === "high_roas"
+									? `ROAS ${alert.value}`
+									: `花费 $${alert.value}`;
+						return `${alert.campaign_name} · ${metric}`;
+					};
+
+					return (
+						<Card
+							title={`今日行动清单 (${data.alerts.length})`}
+							size="small"
+							style={{ marginBottom: 24 }}
+							styles={{ body: { paddingBottom: 8 } }}
+						>
+							{sections.map((section) => (
+								<div key={section.key} style={{ marginBottom: 12 }}>
+									<div
+										style={{
+											fontSize: 13,
+											fontWeight: 600,
+											color: section.color,
+											marginBottom: 6,
+											borderLeft: `3px solid ${section.color}`,
+											paddingLeft: 8,
+										}}
+									>
+										{section.title} ({section.items.length})
+									</div>
+									<div style={{ paddingLeft: 11 }}>
+										{section.items.slice(0, 5).map((alert, idx) => (
+											<div
+												key={`${alert.type}-${alert.campaign_name}-${idx}`}
+												style={{
+													fontSize: 12,
+													color: isDark ? "#D1D5DB" : "#4B5563",
+													padding: "2px 0",
+													lineHeight: 1.6,
+												}}
+											>
+												• {formatAlertMsg(alert)} — {alert.message}
+											</div>
+										))}
+										{section.items.length > 5 && (
+											<div
+												style={{
+													fontSize: 11,
+													color: isDark ? "#9CA3AF" : "#6B7280",
+													paddingTop: 4,
+												}}
+											>
+												还有 {section.items.length - 5} 条
+											</div>
+										)}
+									</div>
+								</div>
+							))}
+						</Card>
+					);
+				})()}
 
 			<Row gutter={16} style={{ marginBottom: 24 }}>
 				<Col span={16}>

@@ -261,6 +261,87 @@ async def process_placement_csv_upload(db: Session, files: list[UploadFile]) -> 
     )
 
 
+def _detect_anomalies(placement_data: list[dict]) -> list[dict]:
+    """Detect data quality issues in parsed placement data.
+
+    Returns a list of {level, message} warnings.
+    level: 'error' (blocks import) | 'warning' (allows but flags) | 'info'
+    """
+    warnings: list[dict] = []
+
+    if not placement_data:
+        warnings.append({"level": "error", "message": "文件中未找到有效数据行"})
+        return warnings
+
+    # Sanity checks per row
+    impossible_rows = 0
+    zero_imp_with_spend = 0
+    extreme_acos_rows = 0
+    extreme_cpc_rows = 0
+
+    for row in placement_data:
+        imp = row.get("impressions", 0) or 0
+        clk = row.get("clicks", 0) or 0
+        spd = row.get("spend", 0) or 0
+        orders = row.get("orders", 0) or 0
+        sales = row.get("sales", 0) or 0
+
+        # Impossible: orders > clicks
+        if orders > clk and clk >= 0:
+            impossible_rows += 1
+        # Spend > 0 but impressions = 0 is impossible
+        if spd > 0 and imp == 0:
+            zero_imp_with_spend += 1
+        # ACOS > 1000% is extreme (possible unit mix-up)
+        if sales > 0 and (spd / sales) > 10:
+            extreme_acos_rows += 1
+        # CPC > $50 is extreme for most categories
+        if clk > 0 and (spd / clk) > 50:
+            extreme_cpc_rows += 1
+
+    if impossible_rows > 0:
+        warnings.append({
+            "level": "error",
+            "message": f"{impossible_rows} 行数据订单数 > 点击数（不可能），可能是列对齐错误",
+        })
+    if zero_imp_with_spend > 0:
+        warnings.append({
+            "level": "warning",
+            "message": f"{zero_imp_with_spend} 行有花费但零曝光，请检查数据完整性",
+        })
+    if extreme_acos_rows > 0:
+        warnings.append({
+            "level": "warning",
+            "message": f"{extreme_acos_rows} 行 ACOS > 1000%，可能是单位错误或数据异常",
+        })
+    if extreme_cpc_rows > 0:
+        warnings.append({
+            "level": "warning",
+            "message": f"{extreme_cpc_rows} 行 CPC > $50，请确认数据合理性",
+        })
+
+    # Check date continuity within the file
+    dates = sorted({row["date"] for row in placement_data if row.get("date")})
+    if len(dates) >= 2:
+        try:
+            from datetime import datetime
+            date_objs = [datetime.strptime(d, "%Y-%m-%d").date() for d in dates]
+            gaps = []
+            for i in range(1, len(date_objs)):
+                diff = (date_objs[i] - date_objs[i - 1]).days
+                if diff > 1:
+                    gaps.append(f"{date_objs[i - 1]} → {date_objs[i]} ({diff - 1} 天缺失)")
+            if gaps:
+                warnings.append({
+                    "level": "info",
+                    "message": f"日期不连续: {'; '.join(gaps[:3])}{' ...' if len(gaps) > 3 else ''}",
+                })
+        except (ValueError, TypeError):
+            pass
+
+    return warnings
+
+
 async def preview_csv_upload(files: list[UploadFile]) -> dict:
     """Preview CSV files without writing to database"""
     previews: list[dict] = []
@@ -314,6 +395,7 @@ async def preview_csv_upload(files: list[UploadFile]) -> dict:
                     "columns": list(placement_data[0].keys()) if placement_data else [],
                     "sample_rows": sample_rows,
                     "ad_type": campaign_summary.get("ad_type", "SP"),
+                    "warnings": _detect_anomalies(placement_data),
                 }
             )
 

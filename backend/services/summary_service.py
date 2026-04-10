@@ -4,7 +4,7 @@ from typing import Optional
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from backend.models import PlacementRecord, Campaign, ProductVariant, OrganicSales
+from backend.models import PlacementRecord, Campaign, ProductVariant, OrganicSales, ImportHistory
 from backend.services.kpi_calculator import (
     calc_ctr,
     calc_cpc,
@@ -168,6 +168,7 @@ def dashboard_overview(db: Session, date_from=None, date_to=None, marketplace_id
     alerts = _generate_dashboard_alerts(all_campaigns)
     profit_data = _calc_profit(db, kpi)
     tacos_data = _calc_tacos(db, kpi, date_from, date_to)
+    freshness = _calc_data_freshness(db)
 
     return {
         "kpi": kpi,
@@ -177,6 +178,7 @@ def dashboard_overview(db: Session, date_from=None, date_to=None, marketplace_id
         "alerts": alerts,
         "profit": profit_data,
         "tacos": tacos_data,
+        "freshness": freshness,
     }
 
 
@@ -271,6 +273,57 @@ def _calc_tacos(db: Session, kpi: dict, date_from=None, date_to=None) -> dict:
         ad_spend = kpi.get("spend", 0) or 0
         return {"value": round(ad_spend / organic_total_sales, 4), "has_data": True}
     return {"value": None, "has_data": False}
+
+
+def _calc_data_freshness(db: Session) -> dict:
+    """Calculate data freshness: latest data date + last import time + staleness level."""
+    from datetime import datetime, date
+
+    latest_data_date = db.query(func.max(PlacementRecord.date)).scalar()
+    last_import = (
+        db.query(ImportHistory)
+        .filter(ImportHistory.status == "success")
+        .order_by(ImportHistory.created_at.desc())
+        .first()
+    )
+
+    if not latest_data_date:
+        return {
+            "latest_data_date": None,
+            "last_import_at": None,
+            "days_stale": None,
+            "level": "empty",
+            "message": "暂无数据，请先导入",
+        }
+
+    # Calculate days between latest data and today
+    try:
+        data_dt = datetime.strptime(latest_data_date, "%Y-%m-%d").date()
+        days_stale = (date.today() - data_dt).days
+    except (ValueError, TypeError):
+        days_stale = None
+
+    if days_stale is None:
+        level = "unknown"
+        message = f"最新数据: {latest_data_date}"
+    elif days_stale <= 2:
+        level = "fresh"
+        message = f"数据最新至 {latest_data_date}（{days_stale} 天前）"
+    elif days_stale <= 7:
+        level = "warning"
+        message = f"数据最新至 {latest_data_date}（{days_stale} 天前），建议导入最新数据"
+    else:
+        level = "stale"
+        message = f"数据最新至 {latest_data_date}（{days_stale} 天前），数据可能过期"
+
+    return {
+        "latest_data_date": latest_data_date,
+        "last_import_at": str(last_import.created_at) if last_import else None,
+        "last_import_file": last_import.file_name if last_import else None,
+        "days_stale": days_stale,
+        "level": level,
+        "message": message,
+    }
 
 
 def compare_periods(
