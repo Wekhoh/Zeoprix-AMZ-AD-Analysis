@@ -172,9 +172,13 @@ export default function CampaignDetail() {
 							size="small"
 							style={{ padding: 0, marginLeft: 8 }}
 							onClick={async () => {
-								await api.post(`/notes/${noteId}/restore`);
-								message.success("已恢复");
-								fetchNotes();
+								try {
+									await api.post(`/notes/${noteId}/restore`);
+									message.success("已恢复");
+									fetchNotes();
+								} catch {
+									message.error("恢复失败，笔记可能已被永久删除");
+								}
 							}}
 						>
 							撤销

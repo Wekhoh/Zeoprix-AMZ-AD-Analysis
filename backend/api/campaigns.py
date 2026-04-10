@@ -238,11 +238,8 @@ def simulate_bid_change(
             "orders_pct": round((projected_orders - orders) / orders * 100, 1)
             if orders > 0
             else None,
-            "acos_pct": round(
-                ((projected_acos or 0) - (current_acos or 0)) / (current_acos or 1) * 100,
-                1,
-            )
-            if current_acos
+            "acos_pct": round((projected_acos - current_acos) / current_acos * 100, 1)
+            if current_acos and projected_acos is not None
             else None,
         },
         "disclaimer": "此为基于历史 CPC 和 CVR 的线性估算，假设点击量不变。实际结果受广告位竞争、展示量变化等因素影响。",
@@ -268,8 +265,6 @@ def get_campaign(campaign_id: int, db: Session = Depends(get_db)):
     """获取广告活动详情（含 KPI 汇总）"""
     campaign = db.query(Campaign).filter(Campaign.id == campaign_id).first()
     if not campaign:
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=404, detail="广告活动不存在")
 
     # 汇总 KPI
@@ -313,8 +308,6 @@ def get_campaign_placement_summary(
     db: Session = Depends(get_db),
 ):
     """按展示位置聚合 KPI（用于位置对比）"""
-    from fastapi import HTTPException
-
     if not db.query(Campaign).filter(Campaign.id == campaign_id).first():
         raise HTTPException(status_code=404, detail="Campaign not found")
     q = db.query(
@@ -356,8 +349,6 @@ def get_campaign_ad_groups(
     db: Session = Depends(get_db),
 ):
     """获取广告活动下的广告组及其 KPI"""
-    from fastapi import HTTPException
-
     if not db.query(Campaign).filter(Campaign.id == campaign_id).first():
         raise HTTPException(status_code=404, detail="Campaign not found")
 

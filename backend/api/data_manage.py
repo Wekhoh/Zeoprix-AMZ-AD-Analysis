@@ -16,6 +16,8 @@ from backend.models import (
     Note,
     OrganicSales,
     ImportHistory,
+    KeywordAction,
+    SuggestionStatus,
 )
 from backend.services.backup_service import create_backup
 
@@ -61,6 +63,8 @@ def clear_advertising_data(db: Session = Depends(get_db)):
         (Campaign, "campaigns"),
         (OrganicSales, "organic_sales"),
         (ImportHistory, "import_history"),
+        (KeywordAction, "keyword_actions"),
+        (SuggestionStatus, "suggestion_status"),
     ]:
         count = db.query(model).delete()
         counts[label] = count

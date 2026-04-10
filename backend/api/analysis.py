@@ -1,8 +1,8 @@
 """智能建议 API"""
 
 from datetime import date, timedelta
-from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import Literal, Optional
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -17,7 +17,7 @@ class SuggestionResolve(BaseModel):
     hash: str
     campaign_id: Optional[int] = None
     suggestion_type: str
-    action: str  # "resolved" | "dismissed" | "snoozed"
+    action: Literal["resolved", "dismissed", "snoozed"]
     snooze_days: Optional[int] = 7
     notes: Optional[str] = None
 
@@ -34,10 +34,7 @@ def get_suggestions(
 
 @router.post("/suggestions/resolve")
 def resolve_suggestion(body: SuggestionResolve, db: Session = Depends(get_db)):
-    """标记建议为已处理/忽略/延后"""
-    if body.action not in ("resolved", "dismissed", "snoozed"):
-        raise HTTPException(status_code=400, detail="action must be resolved/dismissed/snoozed")
-
+    """标记建议为已处理/忽略/延后 (action validated by Pydantic Literal)"""
     snooze_until = None
     if body.action == "snoozed":
         days = body.snooze_days or 7
