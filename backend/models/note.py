@@ -14,3 +14,4 @@ class Note(Base, TimestampMixin):
     date = Column(String)  # YYYY-MM-DD，可选
     content = Column(String, nullable=False)
     note_type = Column(String, default="decision")  # decision / observation / reminder
+    deleted_at = Column(String)  # Soft delete timestamp, null = active

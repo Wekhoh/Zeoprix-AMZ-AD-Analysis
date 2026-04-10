@@ -49,6 +49,18 @@ def _run_migrations(connection):
     if "tags" not in campaign_cols:
         cursor.execute("ALTER TABLE campaigns ADD COLUMN tags TEXT")
 
+    # Add deleted_at to notes (soft delete)
+    cursor.execute("PRAGMA table_info(notes)")
+    note_cols = {row[1] for row in cursor.fetchall()}
+    if "deleted_at" not in note_cols:
+        cursor.execute("ALTER TABLE notes ADD COLUMN deleted_at TEXT")
+
+    # Add deleted_at to organic_sales (soft delete)
+    cursor.execute("PRAGMA table_info(organic_sales)")
+    os_cols = {row[1] for row in cursor.fetchall()}
+    if "deleted_at" not in os_cols:
+        cursor.execute("ALTER TABLE organic_sales ADD COLUMN deleted_at TEXT")
+
     # Sprint 13.3: Create performance indexes (idempotent)
     _indexes = [
         ("ix_placement_campaign_date", "placement_records", "campaign_id, date"),

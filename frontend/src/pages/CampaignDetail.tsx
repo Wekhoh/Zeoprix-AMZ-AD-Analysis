@@ -132,9 +132,34 @@ export default function CampaignDetail() {
 	};
 
 	const handleDeleteNote = async (noteId: number) => {
-		await api.delete(`/notes/${noteId}`);
-		message.success("笔记已删除");
-		fetchNotes();
+		try {
+			await api.delete(`/notes/${noteId}`);
+			fetchNotes();
+			// Show undo toast (soft delete allows restore)
+			message.open({
+				type: "success",
+				content: (
+					<span>
+						笔记已删除{" "}
+						<Button
+							type="link"
+							size="small"
+							style={{ padding: 0, marginLeft: 8 }}
+							onClick={async () => {
+								await api.post(`/notes/${noteId}/restore`);
+								message.success("已恢复");
+								fetchNotes();
+							}}
+						>
+							撤销
+						</Button>
+					</span>
+				),
+				duration: 5,
+			});
+		} catch {
+			message.error("删除失败");
+		}
 	};
 
 	const wowDeltas = useMemo(

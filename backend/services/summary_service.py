@@ -262,7 +262,9 @@ def _calc_profit(db: Session, kpi: dict) -> dict:
 
 def _calc_tacos(db: Session, kpi: dict, date_from=None, date_to=None) -> dict:
     """Calculate TACoS (Total Advertising Cost of Sales)."""
-    organic_q = db.query(func.sum(OrganicSales.total_sales))
+    organic_q = db.query(func.sum(OrganicSales.total_sales)).filter(
+        OrganicSales.deleted_at.is_(None)
+    )
     if date_from:
         organic_q = organic_q.filter(OrganicSales.date >= date_from)
     if date_to:

@@ -12,3 +12,4 @@ class OrganicSales(Base, TimestampMixin):
     total_sales = Column(Float, nullable=False, default=0.0)  # Total sales (organic + ad)
     total_orders = Column(Integer, nullable=False, default=0)
     notes = Column(String)
+    deleted_at = Column(String)  # Soft delete timestamp, null = active

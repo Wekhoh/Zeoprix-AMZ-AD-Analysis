@@ -1,5 +1,6 @@
 """运营笔记 API"""
 
+from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -34,8 +35,8 @@ def list_notes(
     campaign_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
 ):
-    """获取笔记列表"""
-    q = db.query(Note)
+    """获取笔记列表（不含软删除）"""
+    q = db.query(Note).filter(Note.deleted_at.is_(None))
     if campaign_id:
         q = q.filter(Note.campaign_id == campaign_id)
     notes = q.order_by(Note.created_at.desc()).all()
@@ -48,6 +49,26 @@ def list_notes(
             note_type=n.note_type,
             created_at=str(n.created_at) if n.created_at else None,
         )
+        for n in notes
+    ]
+
+
+@router.get("/trash")
+def list_trashed_notes(db: Session = Depends(get_db)):
+    """获取已删除的笔记（回收站）"""
+    notes = (
+        db.query(Note).filter(Note.deleted_at.isnot(None)).order_by(Note.deleted_at.desc()).all()
+    )
+    return [
+        {
+            "id": n.id,
+            "campaign_id": n.campaign_id,
+            "date": n.date,
+            "content": n.content,
+            "note_type": n.note_type,
+            "created_at": str(n.created_at) if n.created_at else None,
+            "deleted_at": n.deleted_at,
+        }
         for n in notes
     ]
 
@@ -76,7 +97,31 @@ def create_note(note: NoteCreate, db: Session = Depends(get_db)):
 
 @router.delete("/{note_id}")
 def delete_note(note_id: int, db: Session = Depends(get_db)):
-    """删除笔记"""
+    """软删除笔记（可通过 /notes/{id}/restore 恢复）"""
+    record = db.query(Note).filter_by(id=note_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="笔记不存在")
+    if record.deleted_at:
+        raise HTTPException(status_code=400, detail="笔记已在回收站")
+    record.deleted_at = datetime.utcnow().isoformat(timespec="seconds")
+    db.commit()
+    return {"success": True, "id": note_id, "deleted_at": record.deleted_at}
+
+
+@router.post("/{note_id}/restore")
+def restore_note(note_id: int, db: Session = Depends(get_db)):
+    """从回收站恢复笔记"""
+    record = db.query(Note).filter_by(id=note_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="笔记不存在")
+    record.deleted_at = None
+    db.commit()
+    return {"success": True, "id": note_id}
+
+
+@router.delete("/{note_id}/permanent")
+def permanently_delete_note(note_id: int, db: Session = Depends(get_db)):
+    """永久删除笔记（无法恢复）"""
     record = db.query(Note).filter_by(id=note_id).first()
     if not record:
         raise HTTPException(status_code=404, detail="笔记不存在")
