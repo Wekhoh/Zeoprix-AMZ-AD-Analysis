@@ -158,6 +158,42 @@ class TestImportInventory:
         assert result["imported"] == 0
         assert "error" in result
 
+    def test_import_over_row_limit_rejected(self, db_session, monkeypatch):
+        """B0-3c: row-count DoS guard. Lower limit to 5 and feed 10 rows."""
+        from backend.services import inventory_service
+
+        monkeypatch.setattr(inventory_service, "MAX_INVENTORY_ROWS", 5)
+
+        header = "sku,Available,Days of Supply\n"
+        rows = "".join(f"SKU-HUGE-{i},100,15\n" for i in range(10))
+        content = header + rows
+
+        result = import_inventory(db_session, content)
+        assert result["imported"] == 0
+        assert "error" in result
+        assert "行数超过" in result["error"]
+        # Critical: nothing should have been written to db
+        snaps = (
+            db_session.query(InventorySnapshot)
+            .filter(InventorySnapshot.sku.like("SKU-HUGE-%"))
+            .count()
+        )
+        assert snaps == 0
+
+    def test_import_under_row_limit_imports_normally(self, db_session, monkeypatch):
+        """Regression: row count just under the limit still imports."""
+        from backend.services import inventory_service
+
+        monkeypatch.setattr(inventory_service, "MAX_INVENTORY_ROWS", 10)
+
+        header = "sku,Available,Days of Supply\n"
+        # 5 rows (under the limit of 10)
+        rows = "".join(f"SKU-OK-{i},100,15\n" for i in range(5))
+        content = header + rows
+
+        result = import_inventory(db_session, content)
+        assert result["imported"] == 5
+
 
 class TestRiskSummary:
     def test_risk_summary_counts(self, db_session):

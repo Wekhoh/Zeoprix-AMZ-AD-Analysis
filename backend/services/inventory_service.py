@@ -130,11 +130,28 @@ def parse_inventory_csv(content: str) -> list[dict]:
     return rows
 
 
+#: Row-level DoS guard — aligns with import_service.MAX_CSV_ROWS.
+#: Amazon Inventory Health reports are typically <5K rows; 100K is 20x headroom.
+MAX_INVENTORY_ROWS = 100_000
+
+
 def import_inventory(db: Session, content: str, filename: str = "") -> dict:
     """Parse + upsert inventory rows for today's snapshot date.
 
     Returns {imported, updated, skipped, critical_count, warning_count, error?}.
     """
+    # Row-count DoS guard (cheap, run before parsing). Counts newlines in the
+    # raw content so an attacker can't OOM us with 10M well-formed rows.
+    if content.count("\n") > MAX_INVENTORY_ROWS:
+        return {
+            "imported": 0,
+            "updated": 0,
+            "skipped": 0,
+            "critical_count": 0,
+            "warning_count": 0,
+            "error": f"CSV 行数超过 {MAX_INVENTORY_ROWS} 限制",
+        }
+
     parsed = parse_inventory_csv(content)
     if not parsed:
         return {
