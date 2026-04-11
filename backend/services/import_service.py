@@ -4,6 +4,7 @@
 """
 
 from collections import Counter
+
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
@@ -11,26 +12,27 @@ from backend.logging_config import get_logger
 
 logger = get_logger("import")
 
-MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB
+MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB — byte-level DoS guard
+# Row-level DoS guard: even a well-formed CSV can OOM the parser if it's
+# 10M rows. Amazon reports are typically < 10K rows; 100K is generous.
+MAX_CSV_ROWS = 100_000
 
 from backend.models import (
-    Campaign,
     AdGroup,
-    PlacementRecord,
+    Campaign,
     CampaignDailyRecord,
-    AdGroupDailyRecord,
-    OperationLog,
-    Marketplace,
     ImportHistory,
+    Marketplace,
+    OperationLog,
+    PlacementRecord,
 )
-from backend.schemas.import_result import ImportResult, ImportDetail
+from backend.schemas.import_result import ImportDetail, ImportResult
 from backend.services.csv_parser import parse_csv_placement_data
 from backend.services.log_parser import parse_operation_log_content
 from backend.utils.campaign_parser import (
-    get_portfolio_name,
-    extract_default_bid,
     extract_bidding_strategy_type,
-    extract_variant_code,
+    extract_default_bid,
+    get_portfolio_name,
 )
 
 
@@ -200,6 +202,16 @@ async def process_placement_csv_upload(db: Session, files: list[UploadFile]) -> 
                 )
                 continue
 
+            # Row-count DoS guard (cheap: no need to parse to count newlines)
+            if content.count("\n") > MAX_CSV_ROWS:
+                details.append(
+                    ImportDetail(
+                        message=f"{file.filename}: 行数超过 {MAX_CSV_ROWS} 限制",
+                        level="error",
+                    )
+                )
+                continue
+
             # 从文件名推断广告活动名称
             placement_data, campaign_summary = parse_csv_placement_data(
                 content, file.filename or "unknown.csv"
@@ -363,8 +375,10 @@ def _detect_historical_anomalies(db, placement_data: list[dict], campaign_name: 
         return warnings
 
     from datetime import datetime, timedelta
-    from backend.models import Campaign, PlacementRecord
+
     from sqlalchemy import func
+
+    from backend.models import Campaign, PlacementRecord
 
     campaign = db.query(Campaign).filter(Campaign.name == campaign_name).first()
     if not campaign:
@@ -559,6 +573,17 @@ async def process_operation_log_upload(db: Session, files: list[UploadFile]) -> 
                 )
                 continue
             content = raw.decode("utf-8")
+
+            # Row-count DoS guard for operation logs too
+            if content.count("\n") > MAX_CSV_ROWS:
+                details.append(
+                    ImportDetail(
+                        message=f"{file.filename}: 行数超过 {MAX_CSV_ROWS} 限制",
+                        level="error",
+                    )
+                )
+                continue
+
             filename = file.filename or "unknown.txt"
 
             log_entries, is_adgroup = parse_operation_log_content(content, filename)
