@@ -1,11 +1,11 @@
 """Tests for summary_service — dashboard KPI, by-date, by-campaign, comparison"""
 
 from backend.services.summary_service import (
-    summary_by_date,
-    summary_by_campaign,
-    dashboard_overview,
-    compare_periods,
     compare_multi_periods,
+    compare_periods,
+    dashboard_overview,
+    summary_by_campaign,
+    summary_by_date,
 )
 
 
@@ -60,6 +60,61 @@ class TestDashboardOverview:
         # C2 has spend=100, sales=0 → ACOS undefined, but spend>0 orders=0 → zero_orders alert
         alert_types = {a["type"] for a in alerts}
         assert "zero_orders" in alert_types or "high_acos" in alert_types
+
+
+class TestDashboardAlertThresholds:
+    """Regression: dashboard alert thresholds must come from config, not hardcoded.
+
+    Protects against drift between config.py and summary_service.py.
+    When these constants change in config, all dashboards must follow automatically.
+    """
+
+    def test_acos_threshold_comes_from_config(self, db_session, seed_campaign_data, monkeypatch):
+        from backend.config import settings
+        from backend.services import summary_service
+
+        # Lower threshold to 0.01 so C1 (ACOS ~30%) definitely triggers
+        monkeypatch.setattr(settings, "DASHBOARD_ACOS_ALERT_THRESHOLD", 0.01)
+        result = summary_service.dashboard_overview(db_session)
+        high_acos = [a for a in result.get("alerts", []) if a["type"] == "high_acos"]
+        assert len(high_acos) >= 1, "expected high_acos alert when threshold lowered to 0.01"
+        # Message should reflect the configured threshold percent
+        assert "1%" in high_acos[0]["message"]
+
+    def test_acos_threshold_can_be_raised_to_silence_alert(
+        self, db_session, seed_campaign_data, monkeypatch
+    ):
+        from backend.config import settings
+        from backend.services import summary_service
+
+        # Raise threshold to 10.0 (1000%) so nothing triggers
+        monkeypatch.setattr(settings, "DASHBOARD_ACOS_ALERT_THRESHOLD", 10.0)
+        result = summary_service.dashboard_overview(db_session)
+        high_acos = [a for a in result.get("alerts", []) if a["type"] == "high_acos"]
+        assert len(high_acos) == 0, "expected no high_acos alert when threshold raised to 10.0"
+
+    def test_roas_threshold_comes_from_config(self, db_session, seed_campaign_data, monkeypatch):
+        from backend.config import settings
+        from backend.services import summary_service
+
+        # Lower threshold to 0.1 so C1 (ROAS ~3.33) definitely triggers success alert
+        monkeypatch.setattr(settings, "DASHBOARD_ROAS_SCALE_UP_THRESHOLD", 0.1)
+        result = summary_service.dashboard_overview(db_session)
+        high_roas = [a for a in result.get("alerts", []) if a["type"] == "high_roas"]
+        assert len(high_roas) >= 1, "expected high_roas alert when threshold lowered to 0.1"
+
+    def test_config_thresholds_documented_and_distinct(self):
+        """Dashboard thresholds must be separate from suggestion-engine thresholds."""
+        from backend.config import settings
+
+        # Dashboard thresholds exist as named attributes
+        assert hasattr(settings, "DASHBOARD_ACOS_ALERT_THRESHOLD")
+        assert hasattr(settings, "DASHBOARD_ROAS_SCALE_UP_THRESHOLD")
+        # They are distinct from the suggestion-engine ones (intentional by design)
+        assert settings.DASHBOARD_ACOS_ALERT_THRESHOLD != settings.ACOS_WARNING_THRESHOLD, (
+            "Dashboard ACOS alert (0.40) should be more sensitive than "
+            "suggestion engine warning (0.50); if you unified them intentionally, update this test"
+        )
 
 
 class TestComparePeriods:

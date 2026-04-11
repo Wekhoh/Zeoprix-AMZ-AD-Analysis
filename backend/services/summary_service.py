@@ -1,16 +1,18 @@
 """多维度汇总服务 — 替代 Excel 的 SUMIFS 公式"""
 
 from typing import Optional
+
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from backend.models import PlacementRecord, Campaign, ProductVariant, OrganicSales, ImportHistory
+from backend.config import settings
+from backend.models import Campaign, ImportHistory, OrganicSales, PlacementRecord, ProductVariant
 from backend.services.kpi_calculator import (
-    calc_ctr,
-    calc_cpc,
-    calc_roas,
     calc_acos,
+    calc_cpc,
+    calc_ctr,
     calc_cvr,
+    calc_roas,
 )
 
 
@@ -199,14 +201,15 @@ def _generate_dashboard_alerts(campaigns: list[dict], db: Session = None) -> lis
         orders = camp.get("orders", 0)
         roas = camp.get("roas")
 
-        if acos and acos > 0.40:
+        if acos and acos > settings.DASHBOARD_ACOS_ALERT_THRESHOLD:
+            threshold_pct = int(settings.DASHBOARD_ACOS_ALERT_THRESHOLD * 100)
             alerts.append(
                 {
                     "type": "high_acos",
                     "severity": "warning",
                     "campaign_name": name,
                     "value": round(acos, 4),
-                    "message": "ACOS 超过 40%，建议检查竞价策略",
+                    "message": f"ACOS 超过 {threshold_pct}%，建议检查竞价策略",
                 }
             )
         if spend > 0 and orders == 0:
@@ -219,7 +222,7 @@ def _generate_dashboard_alerts(campaigns: list[dict], db: Session = None) -> lis
                     "message": "有花费但零订单，建议暂停或降低竞价",
                 }
             )
-        if roas and roas > 3.0:
+        if roas and roas > settings.DASHBOARD_ROAS_SCALE_UP_THRESHOLD:
             alerts.append(
                 {
                     "type": "high_roas",
@@ -349,7 +352,7 @@ def _calc_tacos(db: Session, kpi: dict, date_from=None, date_to=None) -> dict:
 
 def _calc_data_freshness(db: Session) -> dict:
     """Calculate data freshness: latest data date + last import time + staleness level."""
-    from datetime import datetime, date
+    from datetime import date, datetime
 
     latest_data_date = db.query(func.max(PlacementRecord.date)).scalar()
     last_import = (

@@ -1,6 +1,7 @@
 """应用配置"""
 
 from pathlib import Path
+
 from pydantic_settings import BaseSettings
 
 
@@ -22,7 +23,7 @@ class Settings(BaseSettings):
     # 备份
     MAX_BACKUPS: int = 10
 
-    # 建议引擎阈值
+    # 建议引擎阈值（用于 analysis_service / rule_engine 的建议生成）
     ACOS_WARNING_THRESHOLD: float = 0.50
     ACOS_TARGET: float = 0.30
     ROAS_SCALE_UP_THRESHOLD: float = 3.0
@@ -30,6 +31,12 @@ class Settings(BaseSettings):
     CTR_MIN_IMPRESSIONS: int = 1000
     ZERO_ORDERS_MIN_SPEND: float = 5.0
     CPC_OVERPAY_RATIO: float = 1.5
+
+    # Dashboard alert 阈值（用于 summary_service._generate_dashboard_alerts）
+    # 注意：这些比建议引擎阈值更敏感——dashboard 要"一眼发现需要立即处理的"，
+    # 而建议引擎是"值得运营审查的"，两者故意不同
+    DASHBOARD_ACOS_ALERT_THRESHOLD: float = 0.40  # dashboard 今日行动清单里的高 ACOS 门槛
+    DASHBOARD_ROAS_SCALE_UP_THRESHOLD: float = 3.0  # "扩量机会" 门槛，目前与建议引擎同值
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
