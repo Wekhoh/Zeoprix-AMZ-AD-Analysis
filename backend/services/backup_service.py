@@ -1,13 +1,43 @@
 """数据库备份服务"""
 
 import shutil
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
+
 from sqlalchemy.orm import Session
 
 from backend.config import settings
 from backend.database import engine
+from backend.logging_config import get_logger
 from backend.models.system import Backup
+
+logger = get_logger("backup_service")
+
+
+def _validate_backup_path(file_path: str) -> Path | None:
+    """Verify a stored Backup.file_path points inside settings.BACKUP_DIR.
+
+    Defends against tampered Backup records (e.g. a malicious insert
+    pointing at ``/etc/passwd`` or ``C:\\Windows\\System32\\config\\SAM``)
+    where ``delete_backup`` or ``restore_backup`` would otherwise act on
+    arbitrary files. Logs and returns None on any violation so callers
+    can refuse the operation cleanly instead of raising to the client.
+    """
+    try:
+        path = Path(file_path).resolve()
+    except (OSError, ValueError):
+        logger.warning("backup path resolve failed: %r", file_path)
+        return None
+
+    backup_dir = settings.BACKUP_DIR.resolve()
+    if not path.is_relative_to(backup_dir):
+        logger.warning(
+            "SECURITY: refusing backup op on path outside BACKUP_DIR. Got %r, expected under %r",
+            file_path,
+            str(backup_dir),
+        )
+        return None
+    return path
 
 
 def create_backup(db: Session, backup_type: str = "manual") -> dict:
@@ -64,7 +94,15 @@ def delete_backup(db: Session, backup_id: int) -> bool:
     if not record:
         return False
 
-    path = Path(record.file_path)
+    # Security: verify the stored path is inside BACKUP_DIR before unlinking.
+    # A tampered Backup row could otherwise delete arbitrary files.
+    path = _validate_backup_path(record.file_path)
+    if path is None:
+        # Remove the tampered record but do NOT touch the filesystem
+        db.delete(record)
+        db.commit()
+        return False
+
     if path.exists():
         path.unlink()
 
@@ -90,7 +128,13 @@ def restore_backup(db: Session, backup_id: int) -> dict:
     if not record:
         return {"error": "Backup not found"}
 
-    backup_path = Path(record.file_path)
+    # Security: verify the stored path is inside BACKUP_DIR before reading
+    # it into the live database. A tampered Backup row could otherwise
+    # clobber the live db with arbitrary file contents.
+    backup_path = _validate_backup_path(record.file_path)
+    if backup_path is None:
+        return {"error": "Backup path failed security validation"}
+
     if not backup_path.exists():
         return {"error": "Backup file missing"}
 
@@ -118,8 +162,9 @@ def _cleanup_old_backups(db: Session):
         return
 
     for old in backups[settings.MAX_BACKUPS :]:
-        path = Path(old.file_path)
-        if path.exists():
+        # Security: validate path before unlinking a tampered record
+        path = _validate_backup_path(old.file_path)
+        if path is not None and path.exists():
             path.unlink(missing_ok=True)
         db.delete(old)
 
