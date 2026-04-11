@@ -10,6 +10,12 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
+from backend.services.formatters import (
+    format_currency,
+    format_float,
+    format_int,
+    format_percent,
+)
 from backend.services.summary_service import (
     dashboard_overview,
     summary_by_campaign,
@@ -21,17 +27,17 @@ from backend.services.summary_service import (
 def _get_reportlab():
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import cm
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.cidfonts import UnicodeCIDFont
     from reportlab.platypus import (
-        SimpleDocTemplate,
+        PageBreak,
         Paragraph,
+        SimpleDocTemplate,
         Spacer,
         Table,
         TableStyle,
-        PageBreak,
     )
 
     # Register CJK font (built-in to reportlab, no external file needed)
@@ -53,30 +59,6 @@ def _get_reportlab():
         "TableStyle": TableStyle,
         "PageBreak": PageBreak,
     }
-
-
-def _fmt_usd(v) -> str:
-    if v is None:
-        return "-"
-    return f"${v:,.2f}"
-
-
-def _fmt_pct(v) -> str:
-    if v is None:
-        return "-"
-    return f"{v * 100:.2f}%"
-
-
-def _fmt_num(v) -> str:
-    if v is None:
-        return "-"
-    return f"{int(v):,}"
-
-
-def _fmt_float(v, decimals: int = 2) -> str:
-    if v is None:
-        return "-"
-    return f"{v:.{decimals}f}"
 
 
 def generate_pdf_report(
@@ -156,27 +138,27 @@ def generate_pdf_report(
         ["指标", "数值", "指标", "数值"],
         [
             "总花费",
-            _fmt_usd(kpi.get("spend")),
+            format_currency(kpi.get("spend")),
             "总订单",
-            _fmt_num(kpi.get("orders")),
+            format_int(kpi.get("orders")),
         ],
         [
             "总销售额",
-            _fmt_usd(kpi.get("sales")),
+            format_currency(kpi.get("sales")),
             "总曝光",
-            _fmt_num(kpi.get("impressions")),
+            format_int(kpi.get("impressions")),
         ],
         [
             "ACOS",
-            _fmt_pct(kpi.get("acos")),
+            format_percent(kpi.get("acos")),
             "ROAS",
-            _fmt_float(kpi.get("roas")),
+            format_float(kpi.get("roas")),
         ],
         [
             "CTR",
-            _fmt_pct(kpi.get("ctr")),
+            format_percent(kpi.get("ctr")),
             "CPC",
-            _fmt_usd(kpi.get("cpc")),
+            format_currency(kpi.get("cpc")),
         ],
     ]
     kpi_table = rl["Table"](
@@ -207,8 +189,8 @@ def generate_pdf_report(
     if profit.get("has_cost_data"):
         story.append(rl["Spacer"](1, 0.3 * rl["cm"]))
         profit_text = (
-            f"预估利润: {_fmt_usd(profit.get('estimated_profit'))}  |  "
-            f"盈亏平衡 ACOS: {_fmt_pct(profit.get('break_even_acos'))}"
+            f"预估利润: {format_currency(profit.get('estimated_profit'))}  |  "
+            f"盈亏平衡 ACOS: {format_percent(profit.get('break_even_acos'))}"
         )
         story.append(rl["Paragraph"](profit_text, body_style))
 
@@ -226,11 +208,11 @@ def generate_pdf_report(
         camp_data.append(
             [
                 name,
-                _fmt_usd(c.get("spend")),
-                _fmt_num(c.get("orders")),
-                _fmt_usd(c.get("sales")),
-                _fmt_pct(c.get("acos")),
-                _fmt_float(c.get("roas")),
+                format_currency(c.get("spend")),
+                format_int(c.get("orders")),
+                format_currency(c.get("sales")),
+                format_percent(c.get("acos")),
+                format_float(c.get("roas")),
             ]
         )
 
@@ -289,12 +271,12 @@ def generate_pdf_report(
             daily_data.append(
                 [
                     d.get("date", ""),
-                    _fmt_num(d.get("impressions")),
-                    _fmt_num(d.get("clicks")),
-                    _fmt_usd(d.get("spend")),
-                    _fmt_num(d.get("orders")),
-                    _fmt_usd(d.get("sales")),
-                    _fmt_pct(d.get("acos")),
+                    format_int(d.get("impressions")),
+                    format_int(d.get("clicks")),
+                    format_currency(d.get("spend")),
+                    format_int(d.get("orders")),
+                    format_currency(d.get("sales")),
+                    format_percent(d.get("acos")),
                 ]
             )
         daily_table = rl["Table"](

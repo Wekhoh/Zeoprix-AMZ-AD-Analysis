@@ -262,3 +262,56 @@ class TestReportServiceInjectionIntegration:
                 found_name = row[0]
                 break
         assert found_name == normal_name, f"Normal name was unexpectedly modified: {found_name!r}"
+
+    def test_pdf_report_generates_valid_bytes(self, db_session):
+        """Smoke test: PDF report generation after formatters consolidation
+        still produces a valid PDF byte stream with PDF magic header.
+
+        Covers the B0-2b migration from local _fmt_* functions to
+        backend.services.formatters — any format call signature mismatch
+        or type error would crash generate_pdf_report.
+        """
+        from backend.models import Campaign, Marketplace, PlacementRecord
+        from backend.services.pdf_report_service import generate_pdf_report
+
+        mp = Marketplace(code="US", name="US", currency="USD")
+        db_session.add(mp)
+        db_session.flush()
+
+        c = Campaign(
+            name="Test PDF Campaign",
+            ad_type="SP",
+            targeting_type="auto",
+            bidding_strategy="Fixed bids",
+            status="Delivering",
+            marketplace_id=mp.id,
+        )
+        db_session.add(c)
+        db_session.flush()
+        db_session.add(
+            PlacementRecord(
+                date="2026-04-11",
+                campaign_id=c.id,
+                placement_type="搜索顶部",
+                impressions=1000,
+                clicks=50,
+                spend=25.0,
+                orders=5,
+                sales=150.0,
+            )
+        )
+        db_session.commit()
+
+        pdf_bytes = generate_pdf_report(db_session)
+        assert isinstance(pdf_bytes, bytes)
+        assert len(pdf_bytes) > 1000, "PDF should be non-trivial in size"
+        assert pdf_bytes[:4] == b"%PDF", "Output must start with PDF magic header"
+
+    def test_pdf_report_handles_none_kpi_values(self, db_session):
+        """Edge case: all KPI values None (empty db) should render '-' not crash."""
+        from backend.services.pdf_report_service import generate_pdf_report
+
+        # Empty db — no campaigns, no placements
+        pdf_bytes = generate_pdf_report(db_session)
+        assert isinstance(pdf_bytes, bytes)
+        assert pdf_bytes[:4] == b"%PDF"
