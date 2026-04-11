@@ -2,16 +2,18 @@
 
 from io import BytesIO
 from typing import Optional
+
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from sqlalchemy.orm import Session
 
+from backend.services.formatters import safe_cell
 from backend.services.summary_service import (
-    summary_by_date,
-    summary_by_campaign,
-    summary_by_placement,
     dashboard_overview,
+    summary_by_campaign,
+    summary_by_date,
+    summary_by_placement,
 )
 
 # ============================================================
@@ -285,10 +287,10 @@ def generate_excel_report(
 
     for i, row in enumerate(sorted_campaigns):
         r = i + 2
-        ws3.cell(row=r, column=1, value=row.get("campaign_name")).font = BODY_FONT
+        ws3.cell(row=r, column=1, value=safe_cell(row.get("campaign_name"))).font = BODY_FONT
         ws3.cell(row=r, column=1).border = THIN_BORDER
 
-        status_cell = ws3.cell(row=r, column=2, value=row.get("status"))
+        status_cell = ws3.cell(row=r, column=2, value=safe_cell(row.get("status")))
         status_cell.font = BODY_FONT
         status_cell.border = THIN_BORDER
         if row.get("status") == "Paused":
@@ -297,7 +299,7 @@ def generate_excel_report(
             )
 
         date_range_str = f"{row.get('first_date', '')} ~ {row.get('last_date', '')}"
-        ws3.cell(row=r, column=3, value=date_range_str).font = BODY_FONT
+        ws3.cell(row=r, column=3, value=safe_cell(date_range_str)).font = BODY_FONT
         ws3.cell(row=r, column=3).border = THIN_BORDER
 
         _write_kpi_row(ws3, r, row, 4)
@@ -342,7 +344,7 @@ def generate_excel_report(
 
     for i, row in enumerate(placement_data):
         r = i + 2
-        ws4.cell(row=r, column=1, value=row.get("placement_type")).font = BODY_FONT
+        ws4.cell(row=r, column=1, value=safe_cell(row.get("placement_type"))).font = BODY_FONT
         ws4.cell(row=r, column=1).border = THIN_BORDER
         _write_kpi_row(ws4, r, row, 2)
 
@@ -361,8 +363,9 @@ def generate_excel_report(
     ws5.sheet_properties.tabColor = "EF4444"
 
     # Build pivot: campaign × placement → spend
-    from backend.models import PlacementRecord, Campaign
     from sqlalchemy import func
+
+    from backend.models import Campaign, PlacementRecord
 
     q = (
         db.query(
@@ -391,7 +394,7 @@ def generate_excel_report(
     ws5.cell(row=1, column=1).fill = HEADER_FILL
     ws5.cell(row=1, column=1).border = THIN_BORDER
     for j, p in enumerate(placements):
-        cell = ws5.cell(row=1, column=2 + j, value=p)
+        cell = ws5.cell(row=1, column=2 + j, value=safe_cell(p))
         cell.font = HEADER_FONT
         cell.fill = HEADER_FILL
         cell.alignment = HEADER_ALIGN
@@ -410,7 +413,7 @@ def generate_excel_report(
 
     for i, camp in enumerate(campaigns):
         r = i + 2
-        ws5.cell(row=r, column=1, value=camp).font = BODY_FONT
+        ws5.cell(row=r, column=1, value=safe_cell(camp)).font = BODY_FONT
         ws5.cell(row=r, column=1).border = THIN_BORDER
         row_total = 0
         for j, p in enumerate(placements):
@@ -456,13 +459,15 @@ def generate_excel_report(
 
     for alert in alerts:
         r = ws6.max_row + 1
-        ws6.cell(row=r, column=1, value=alert.get("severity", "")).font = BODY_FONT
+        ws6.cell(row=r, column=1, value=safe_cell(alert.get("severity", ""))).font = BODY_FONT
         ws6.cell(row=r, column=1).border = THIN_BORDER
-        ws6.cell(row=r, column=2, value=alert.get("campaign_name", "")).font = BODY_FONT
+        ws6.cell(row=r, column=2, value=safe_cell(alert.get("campaign_name", ""))).font = BODY_FONT
         ws6.cell(row=r, column=2).border = THIN_BORDER
-        ws6.cell(row=r, column=3, value=str(alert.get("value", ""))).font = BODY_FONT
+        # Note: `str(alert.get("value"))` can produce "-42.5" which triggers
+        # formula parsing — safe_cell forces text interpretation
+        ws6.cell(row=r, column=3, value=safe_cell(str(alert.get("value", "")))).font = BODY_FONT
         ws6.cell(row=r, column=3).border = THIN_BORDER
-        ws6.cell(row=r, column=4, value=alert.get("message", "")).font = BODY_FONT
+        ws6.cell(row=r, column=4, value=safe_cell(alert.get("message", ""))).font = BODY_FONT
         ws6.cell(row=r, column=4).border = THIN_BORDER
 
         if alert.get("severity") in ("danger", "warning"):
