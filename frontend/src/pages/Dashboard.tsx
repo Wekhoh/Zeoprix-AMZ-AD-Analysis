@@ -275,6 +275,17 @@ export default function Dashboard() {
 				/>
 			)}
 
+			{data.budget_pacing?.enabled && data.budget_pacing.message && (
+				<Alert
+					type={data.budget_pacing.level === "danger" ? "error" : "warning"}
+					showIcon
+					message={data.budget_pacing.message}
+					description={`本月已花费 $${data.budget_pacing.current_spend?.toFixed(0)} / 预算 $${data.budget_pacing.monthly_budget?.toFixed(0)}（第 ${data.budget_pacing.days_elapsed} / ${data.budget_pacing.days_total} 天）`}
+					style={{ marginBottom: 16 }}
+					closable
+				/>
+			)}
+
 			<Row gutter={16} style={{ marginBottom: 24 }}>
 				<Col span={data.tacos?.has_data ? 4 : 6}>
 					<Card>

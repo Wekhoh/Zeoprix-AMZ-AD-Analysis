@@ -171,6 +171,18 @@ export interface DataFreshness {
 	message: string;
 }
 
+export interface BudgetPacing {
+	enabled: boolean;
+	monthly_budget: number;
+	current_spend: number;
+	projected_spend: number | null;
+	days_elapsed: number;
+	days_total: number;
+	pacing_pct: number | null;
+	level: "ok" | "warning" | "danger" | "disabled";
+	message: string | null;
+}
+
 export interface DashboardData {
 	kpi: DashboardKPI;
 	daily_trend: DailyTrend[];
@@ -181,6 +193,7 @@ export interface DashboardData {
 	tacos: TacosData;
 	freshness?: DataFreshness;
 	inventory_status?: InventoryStatus;
+	budget_pacing?: BudgetPacing;
 }
 
 export interface SummaryRow {

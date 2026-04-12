@@ -173,6 +173,10 @@ def dashboard_overview(db: Session, date_from=None, date_to=None, marketplace_id
     freshness = _calc_data_freshness(db)
     inventory_status = _calc_inventory_status(db)
 
+    from backend.services.budget_service import calc_budget_pacing
+
+    budget_pacing = calc_budget_pacing(db)
+
     return {
         "kpi": kpi,
         "status_counts": {s: c for s, c in status_counts},
@@ -183,6 +187,7 @@ def dashboard_overview(db: Session, date_from=None, date_to=None, marketplace_id
         "tacos": tacos_data,
         "freshness": freshness,
         "inventory_status": inventory_status,
+        "budget_pacing": budget_pacing,
     }
 
 
