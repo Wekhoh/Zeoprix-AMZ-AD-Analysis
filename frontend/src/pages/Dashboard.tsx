@@ -299,7 +299,12 @@ export default function Dashboard() {
 							prefix={<DollarOutlined />}
 							suffix="USD"
 						/>
-						{wowDeltas && <WowIndicator delta={wowDeltas.spend} />}
+						{wowDeltas && (
+							<WowIndicator
+								delta={wowDeltas.spend}
+								dodDelta={wowDeltas.dod_spend}
+							/>
+						)}
 					</Card>
 				</Col>
 				<Col span={data.tacos?.has_data ? 4 : 6}>
@@ -313,7 +318,12 @@ export default function Dashboard() {
 							value={data.kpi.orders}
 							prefix={<ShoppingCartOutlined />}
 						/>
-						{wowDeltas && <WowIndicator delta={wowDeltas.orders} />}
+						{wowDeltas && (
+							<WowIndicator
+								delta={wowDeltas.orders}
+								dodDelta={wowDeltas.dod_orders}
+							/>
+						)}
 					</Card>
 				</Col>
 				<Col span={data.tacos?.has_data ? 5 : 6}>
@@ -329,7 +339,13 @@ export default function Dashboard() {
 							prefix={<PercentageOutlined />}
 							suffix="%"
 						/>
-						{wowDeltas && <WowIndicator delta={wowDeltas.acos} invertColor />}
+						{wowDeltas && (
+							<WowIndicator
+								delta={wowDeltas.acos}
+								dodDelta={wowDeltas.dod_acos}
+								invertColor
+							/>
+						)}
 					</Card>
 				</Col>
 				<Col span={data.tacos?.has_data ? 5 : 6}>
@@ -344,7 +360,12 @@ export default function Dashboard() {
 							precision={2}
 							prefix={<RiseOutlined />}
 						/>
-						{wowDeltas && <WowIndicator delta={wowDeltas.roas} />}
+						{wowDeltas && (
+							<WowIndicator
+								delta={wowDeltas.roas}
+								dodDelta={wowDeltas.dod_roas}
+							/>
+						)}
 					</Card>
 				</Col>
 				{data.tacos?.has_data && (
