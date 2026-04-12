@@ -9,12 +9,12 @@
 import csv
 import io
 from typing import Optional
+
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.models import Campaign, Marketplace
 from backend.models.search_term import SearchTermReport
-
 
 # 亚马逊搜索词报告的可能列名映射
 COLUMN_MAP = {
@@ -294,9 +294,22 @@ def classify_search_terms_4bucket(
     - Money Pits: clicks > 20 且 orders = 0（烧钱词）
     - Low Data: clicks < 15（数据不足，暂不操作）
 
+    B2 enhancements:
+    - Never-Negative whitelist: money_pits terms on the whitelist get
+      ``whitelisted=True`` and a different action message instead of being
+      hidden. The operator can still see the data but the system won't
+      suggest negating them.
+    - Suggested bid: winners and potential items get a ``suggested_bid``
+      computed from their average CPC (winners +10%, potential -20%).
+
     Returns: {"winners": [...], "potential": [...], "money_pits": [...], "low_data": [...], "stats": {...}}
     """
+    from backend.models import NegativeWhitelist
+
     all_terms = _bucket_terms_with_campaign(db, campaign_id)
+
+    # Pre-fetch whitelist as a set for O(1) lookups
+    whitelist_terms = {r.search_term for r in db.query(NegativeWhitelist.search_term).all()}
 
     winners = []
     potential = []
@@ -309,39 +322,72 @@ def classify_search_terms_4bucket(
         acos = t["acos"]
         impressions = t["impressions"]
         ctr = t["ctr"]
+        cpc = t["cpc"]
+        is_whitelisted = t["search_term"] in whitelist_terms
 
         if clicks < 15:
             low_data.append({**t, "bucket": "low_data", "action": "等待数据积累，暂不操作"})
         elif orders >= 2 and acos is not None and acos < target_acos:
+            suggested_bid = round(cpc * 1.1, 2) if cpc else None
             winners.append(
                 {
                     **t,
                     "bucket": "winners",
                     "action": "提高竞价 10-20%，迁移至精准匹配独立广告",
+                    "suggested_bid": suggested_bid,
                 }
             )
         elif clicks >= 20 and orders == 0:
-            money_pits.append(
-                {
-                    **t,
-                    "bucket": "money_pits",
-                    "action": f"立即加入精准否定（已烧 ${t['spend']:.2f}）",
-                }
-            )
+            if is_whitelisted:
+                money_pits.append(
+                    {
+                        **t,
+                        "bucket": "money_pits",
+                        "whitelisted": True,
+                        "action": f"已加入白名单（已烧 ${t['spend']:.2f}），不建议否定",
+                    }
+                )
+            else:
+                money_pits.append(
+                    {
+                        **t,
+                        "bucket": "money_pits",
+                        "whitelisted": False,
+                        "action": f"立即加入精准否定（已烧 ${t['spend']:.2f}）",
+                    }
+                )
         elif (impressions > 100 and ctr is not None and ctr < 0.003) or (
             clicks > 10 and orders == 0
         ):
+            suggested_bid = round(cpc * 0.8, 2) if cpc else None
             potential.append(
                 {
                     **t,
                     "bucket": "potential",
                     "action": "优化 Listing（主图、标题、价格）提升转化",
+                    "suggested_bid": suggested_bid,
                 }
             )
         elif orders >= 1:
-            winners.append({**t, "bucket": "winners", "action": "有转化潜力，观察并适度提高竞价"})
+            suggested_bid = round(cpc * 1.1, 2) if cpc else None
+            winners.append(
+                {
+                    **t,
+                    "bucket": "winners",
+                    "action": "有转化潜力，观察并适度提高竞价",
+                    "suggested_bid": suggested_bid,
+                }
+            )
         else:
-            potential.append({**t, "bucket": "potential", "action": "继续观察，考虑优化匹配方式"})
+            suggested_bid = round(cpc * 0.8, 2) if cpc else None
+            potential.append(
+                {
+                    **t,
+                    "bucket": "potential",
+                    "action": "继续观察，考虑优化匹配方式",
+                    "suggested_bid": suggested_bid,
+                }
+            )
 
     return {
         "winners": winners,
