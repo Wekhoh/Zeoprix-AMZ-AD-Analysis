@@ -35,6 +35,8 @@ interface BucketItem {
 	cvr: number | null;
 	bucket: string;
 	action: string;
+	suggested_bid?: number | null;
+	whitelisted?: boolean;
 }
 
 interface BucketStats {
@@ -111,6 +113,23 @@ function exportHarvestKeywords(winners: BucketItem[]) {
 	URL.revokeObjectURL(url);
 }
 
+function downloadBulkUploadExcel() {
+	api
+		.get("/search-terms/bulk-upload-export", { responseType: "blob" })
+		.then((res) => {
+			const blob = new Blob([res.data], {
+				type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+			});
+			const url = URL.createObjectURL(blob);
+			const link = document.createElement("a");
+			link.href = url;
+			link.download = `amazon_bulk_upload_${new Date().toISOString().slice(0, 10)}.xlsx`;
+			link.click();
+			URL.revokeObjectURL(url);
+		})
+		.catch(() => message.error("Bulk Upload 导出失败"));
+}
+
 const BUCKET_COLORS: Record<string, string> = {
 	winners: "#52c41a",
 	potential: "#1677ff",
@@ -134,6 +153,7 @@ function buildBucketColumns(
 		campName?: string,
 		campId?: number | null,
 	) => void,
+	onWhitelist?: (term: string) => void,
 ): TableProps<BucketItem>["columns"] {
 	return [
 		{
@@ -213,14 +233,34 @@ function buildBucketColumns(
 			sorter: (a: BucketItem, b: BucketItem) => (a.acos ?? 0) - (b.acos ?? 0),
 			render: (v: number | null) => formatPct(v),
 		},
+		...(bucketKey === "winners" || bucketKey === "potential"
+			? [
+					{
+						title: "建议竞价",
+						dataIndex: "suggested_bid",
+						key: "suggested_bid",
+						width: 100,
+						render: (v: number | null | undefined) =>
+							v != null ? `$${v.toFixed(2)}` : "-",
+					},
+				]
+			: []),
 		{
 			title: "建议操作",
 			dataIndex: "action",
 			key: "action",
-			width: 260,
-			render: (v: string) => (
-				<Tag color={BUCKET_TAG_COLORS[bucketKey] ?? "default"}>{v}</Tag>
-			),
+			width: 280,
+			render: (v: string, record: BucketItem) => {
+				if (bucketKey === "money_pits" && record.whitelisted) {
+					return (
+						<Space size={4}>
+							<Tag color="gold">白名单</Tag>
+							<Tag color="default">{v}</Tag>
+						</Space>
+					);
+				}
+				return <Tag color={BUCKET_TAG_COLORS[bucketKey] ?? "default"}>{v}</Tag>;
+			},
 		},
 		...(processedTerms && onMark
 			? [
@@ -241,19 +281,32 @@ function buildBucketColumns(
 								bucketKey === "money_pits" ? "negate_exact" : "harvest_exact";
 							const label = bucketKey === "money_pits" ? "否定" : "收割";
 							return (
-								<Button
-									size="small"
-									onClick={() =>
-										onMark(
-											record.search_term,
-											action,
-											record.campaign_name,
-											record.campaign_id,
-										)
-									}
-								>
-									{label}
-								</Button>
+								<Space size={4}>
+									<Button
+										size="small"
+										onClick={() =>
+											onMark(
+												record.search_term,
+												action,
+												record.campaign_name,
+												record.campaign_id,
+											)
+										}
+									>
+										{label}
+									</Button>
+									{bucketKey === "money_pits" &&
+										!record.whitelisted &&
+										onWhitelist && (
+											<Button
+												size="small"
+												type="dashed"
+												onClick={() => onWhitelist(record.search_term)}
+											>
+												白名单
+											</Button>
+										)}
+								</Space>
 							);
 						},
 					},
@@ -296,6 +349,19 @@ export default function SearchTerms() {
 		});
 		setProcessedTerms((prev) => ({ ...prev, [term]: actionType }));
 		message.success(`已标记「${term}」为 ${actionType}`);
+	};
+
+	const addToWhitelist = async (term: string) => {
+		try {
+			await api.post("/search-terms/whitelist", {
+				terms: [term],
+				reason: "从 Money Pits 加入",
+			});
+			message.success(`「${term}」已加入白名单`);
+			void fetchData();
+		} catch {
+			message.error("加入白名单失败");
+		}
 	};
 
 	const fetchData = useCallback(async () => {
@@ -357,13 +423,22 @@ export default function SearchTerms() {
 			children: (
 				<>
 					<div style={{ marginBottom: 12, textAlign: "right" }}>
-						<Button
-							icon={<DownloadOutlined />}
-							onClick={() => exportHarvestKeywords(bucketData?.winners ?? [])}
-							disabled={!bucketData?.winners?.length}
-						>
-							Harvest 导出精准匹配
-						</Button>
+						<Space>
+							<Button
+								icon={<DownloadOutlined />}
+								onClick={() => exportHarvestKeywords(bucketData?.winners ?? [])}
+								disabled={!bucketData?.winners?.length}
+							>
+								Harvest 导出 CSV
+							</Button>
+							<Button
+								type="primary"
+								icon={<DownloadOutlined />}
+								onClick={downloadBulkUploadExcel}
+							>
+								Amazon Bulk Upload Excel
+							</Button>
+						</Space>
 					</div>
 					<Table<BucketItem>
 						columns={buildBucketColumns(
@@ -431,6 +506,7 @@ export default function SearchTerms() {
 							"money_pits",
 							processedTerms,
 							markAsProcessed,
+							addToWhitelist,
 						)}
 						dataSource={bucketData?.money_pits ?? []}
 						rowKey={(r) => `${r.campaign_id}-${r.search_term}`}
