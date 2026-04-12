@@ -301,3 +301,35 @@ export interface Suggestion {
 	metric: Record<string, string | number>;
 	hash?: string;
 }
+
+export interface AdGroupSummary {
+	id: number;
+	name: string;
+	status: string;
+	default_bid: number | null;
+	keyword_count: number;
+	impressions: number;
+	clicks: number;
+	spend: number;
+	orders: number;
+	sales: number;
+	acos: number | null;
+	roas: number | null;
+}
+
+export interface KeywordSummary {
+	id: number;
+	keyword_text: string;
+	match_type: string;
+	bid: number | null;
+	state: string;
+	impressions: number;
+	clicks: number;
+	spend: number;
+	orders: number;
+	sales: number;
+	ctr: number | null;
+	cpc: number | null;
+	acos: number | null;
+	roas: number | null;
+}

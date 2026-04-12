@@ -103,6 +103,7 @@ export default function CampaignDetail() {
 			name: string;
 			status: string;
 			default_bid: number | null;
+			keyword_count: number;
 			impressions: number;
 			clicks: number;
 			spend: number;
@@ -112,6 +113,44 @@ export default function CampaignDetail() {
 			acos: number | null;
 		}[]
 	>([]);
+	const [expandedKeywords, setExpandedKeywords] = useState<
+		Record<
+			number,
+			{
+				loading: boolean;
+				data: Array<{
+					id: number;
+					keyword_text: string;
+					match_type: string;
+					bid: number | null;
+					state: string;
+					impressions: number;
+					clicks: number;
+					spend: number;
+					orders: number;
+					sales: number;
+					ctr: number | null;
+					cpc: number | null;
+					acos: number | null;
+					roas: number | null;
+				}>;
+			}
+		>
+	>({});
+
+	const fetchKeywordsForAdGroup = (adGroupId: number) => {
+		if (expandedKeywords[adGroupId]?.data) return;
+		setExpandedKeywords((prev) => ({
+			...prev,
+			[adGroupId]: { loading: true, data: [] },
+		}));
+		api.get(`/ad-groups/${adGroupId}/keywords`).then((res) => {
+			setExpandedKeywords((prev) => ({
+				...prev,
+				[adGroupId]: { loading: false, data: res.data },
+			}));
+		});
+	};
 
 	const fetchNotes = () => {
 		if (!id) return;
@@ -516,6 +555,13 @@ export default function CampaignDetail() {
 							render: (v: number | null) => (v != null ? `$${v}` : "-"),
 						},
 						{
+							title: "关键词",
+							dataIndex: "keyword_count",
+							key: "kw_count",
+							width: 70,
+							render: (v: number) => v || 0,
+						},
+						{
 							title: "花费",
 							dataIndex: "spend",
 							key: "spend",
@@ -570,6 +616,94 @@ export default function CampaignDetail() {
 					rowKey="id"
 					size="middle"
 					pagination={false}
+					expandable={{
+						expandedRowRender: (record: { id: number }) => {
+							const kwState = expandedKeywords[record.id];
+							if (!kwState || kwState.loading) {
+								return <span style={{ color: "#999" }}>加载关键词...</span>;
+							}
+							if (kwState.data.length === 0) {
+								return (
+									<span style={{ color: "#999" }}>
+										暂无关键词数据（需导入 Keyword Report）
+									</span>
+								);
+							}
+							return (
+								<Table
+									columns={[
+										{
+											title: "关键词",
+											dataIndex: "keyword_text",
+											key: "kw",
+											ellipsis: true,
+										},
+										{
+											title: "匹配",
+											dataIndex: "match_type",
+											key: "mt",
+											width: 80,
+											render: (v: string) => <Tag>{v}</Tag>,
+										},
+										{
+											title: "竞价",
+											dataIndex: "bid",
+											key: "bid",
+											width: 70,
+											render: (v: number | null) => (v != null ? `$${v}` : "-"),
+										},
+										{
+											title: "状态",
+											dataIndex: "state",
+											key: "st",
+											width: 80,
+											render: (v: string) => (
+												<Tag color={v === "enabled" ? "green" : "default"}>
+													{v}
+												</Tag>
+											),
+										},
+										{
+											title: "花费",
+											dataIndex: "spend",
+											key: "sp",
+											width: 80,
+											render: (v: number) => fmtUsd(v),
+										},
+										{
+											title: "订单",
+											dataIndex: "orders",
+											key: "ord",
+											width: 60,
+										},
+										{
+											title: "ACOS",
+											dataIndex: "acos",
+											key: "acos",
+											width: 80,
+											render: (v: number | null) =>
+												v != null ? fmtPct(v) : "-",
+										},
+										{
+											title: "ROAS",
+											dataIndex: "roas",
+											key: "roas",
+											width: 70,
+											render: (v: number | null) =>
+												v != null ? v.toFixed(2) : "-",
+										},
+									]}
+									dataSource={kwState.data}
+									rowKey="id"
+									size="small"
+									pagination={false}
+								/>
+							);
+						},
+						onExpand: (expanded: boolean, record: { id: number }) => {
+							if (expanded) fetchKeywordsForAdGroup(record.id);
+						},
+					}}
 				/>
 			),
 		},
