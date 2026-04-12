@@ -45,3 +45,4 @@ class AdGroup(Base, TimestampMixin):
 
     campaign = relationship("Campaign", back_populates="ad_groups")
     daily_records = relationship("AdGroupDailyRecord", back_populates="ad_group")
+    keywords = relationship("Keyword", back_populates="ad_group")

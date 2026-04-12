@@ -14,6 +14,7 @@ from backend.models.keyword_action import KeywordAction
 from backend.models.suggestion_status import SuggestionStatus
 from backend.models.inventory import InventorySnapshot
 from backend.models.negative_whitelist import NegativeWhitelist
+from backend.models.keyword import Keyword, KeywordDailyRecord
 
 __all__ = [
     "Base",
@@ -36,4 +37,6 @@ __all__ = [
     "SuggestionStatus",
     "InventorySnapshot",
     "NegativeWhitelist",
+    "Keyword",
+    "KeywordDailyRecord",
 ]
