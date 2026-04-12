@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     ZERO_ORDERS_MIN_SPEND: float = 5.0
     CPC_OVERPAY_RATIO: float = 1.5
 
+    # 月度预算 Pacing（用于 budget_service 超支预测）
+    # 设为 0 表示不启用预算监控。可在 .env 中覆盖。
+    MONTHLY_BUDGET: float = 0.0  # 月度广告总预算 (USD)
+    BUDGET_WARNING_THRESHOLD: float = 0.9  # 预计超支到 90% 时预警
+
     # Dashboard alert 阈值（用于 summary_service._generate_dashboard_alerts）
     # 注意：这些比建议引擎阈值更敏感——dashboard 要"一眼发现需要立即处理的"，
     # 而建议引擎是"值得运营审查的"，两者故意不同
