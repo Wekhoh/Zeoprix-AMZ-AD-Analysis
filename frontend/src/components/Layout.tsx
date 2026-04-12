@@ -178,6 +178,27 @@ export default function AppLayout() {
 		setCommandPaletteOpen((prev) => !prev);
 	}, []);
 
+	// B6-B-8: Double-click any table cell to copy its text
+	useEffect(() => {
+		const handleDblClick = (e: MouseEvent) => {
+			const target = e.target as HTMLElement;
+			const td = target.closest("td");
+			if (!td) return;
+			const text = td.innerText?.trim();
+			if (!text) return;
+			navigator.clipboard.writeText(text).then(() => {
+				td.style.outline = "2px solid #1677ff";
+				td.style.outlineOffset = "-2px";
+				setTimeout(() => {
+					td.style.outline = "";
+					td.style.outlineOffset = "";
+				}, 300);
+			});
+		};
+		window.addEventListener("dblclick", handleDblClick);
+		return () => window.removeEventListener("dblclick", handleDblClick);
+	}, []);
+
 	// Responsive: auto-collapse on mobile resize
 	useEffect(() => {
 		const handleResize = () => {
