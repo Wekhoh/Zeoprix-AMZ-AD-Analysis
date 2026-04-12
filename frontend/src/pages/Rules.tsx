@@ -16,6 +16,7 @@ import {
 	Popconfirm,
 } from "antd";
 import {
+	EyeOutlined,
 	PlusOutlined,
 	PlayCircleOutlined,
 	DeleteOutlined,
@@ -183,6 +184,40 @@ export default function Rules() {
 		}
 	};
 
+	const handleDryRun = async (ruleId: number, ruleName: string) => {
+		try {
+			const res = await api.get<{
+				total_triggered: number;
+				results: RuleResult[];
+			}>(`/rules/${ruleId}/dry-run`);
+			message.info(
+				`Dry Run「${ruleName}」: ${res.data.total_triggered} 个广告活动会被触发`,
+			);
+			if (res.data.results.length > 0) {
+				setResults(res.data.results);
+			}
+		} catch {
+			message.error("Dry Run 失败");
+		}
+	};
+
+	const downloadSuggestionBulkUpload = () => {
+		api
+			.get("/rules/suggestions/bulk-upload-export", { responseType: "blob" })
+			.then((res) => {
+				const blob = new Blob([res.data], {
+					type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+				});
+				const url = URL.createObjectURL(blob);
+				const link = document.createElement("a");
+				link.href = url;
+				link.download = `suggestion_bulk_upload_${new Date().toISOString().slice(0, 10)}.xlsx`;
+				link.click();
+				URL.revokeObjectURL(url);
+			})
+			.catch(() => message.error("Bulk Upload 导出失败"));
+	};
+
 	const ruleColumns = [
 		{ title: "规则名称", dataIndex: "name", key: "name", width: 160 },
 		{
@@ -230,20 +265,30 @@ export default function Rules() {
 		{
 			title: "操作",
 			key: "actions",
-			width: 60,
+			width: 120,
 			render: (_: unknown, record: RuleItem) => (
-				<Popconfirm
-					title="确定删除此规则？"
-					onConfirm={() => handleDelete(record.id)}
-				>
+				<Space size={4}>
 					<Button
 						type="text"
-						danger
-						icon={<DeleteOutlined />}
+						icon={<EyeOutlined />}
 						size="small"
-						aria-label="删除规则"
+						aria-label="Dry Run 预览"
+						title="Dry Run 预览"
+						onClick={() => handleDryRun(record.id, record.name)}
 					/>
-				</Popconfirm>
+					<Popconfirm
+						title="确定删除此规则？"
+						onConfirm={() => handleDelete(record.id)}
+					>
+						<Button
+							type="text"
+							danger
+							icon={<DeleteOutlined />}
+							size="small"
+							aria-label="删除规则"
+						/>
+					</Popconfirm>
+				</Space>
 			),
 		},
 	];
@@ -358,12 +403,21 @@ export default function Rules() {
 					title={`评估结果 (${results.length} 条触发)`}
 					style={{ marginTop: 24 }}
 					extra={
-						<Button
-							icon={<DownloadOutlined />}
-							onClick={() => exportRuleResults(results)}
-						>
-							导出操作建议
-						</Button>
+						<Space>
+							<Button
+								icon={<DownloadOutlined />}
+								onClick={() => exportRuleResults(results)}
+							>
+								导出 CSV
+							</Button>
+							<Button
+								type="primary"
+								icon={<DownloadOutlined />}
+								onClick={downloadSuggestionBulkUpload}
+							>
+								Amazon Bulk Upload
+							</Button>
+						</Space>
 					}
 				>
 					<Table
