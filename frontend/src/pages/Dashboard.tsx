@@ -9,6 +9,7 @@ import {
 	Row,
 	Statistic,
 	Table,
+	Tooltip,
 } from "antd";
 import {
 	DollarOutlined,
@@ -290,7 +291,9 @@ export default function Dashboard() {
 				<Col span={data.tacos?.has_data ? 4 : 6}>
 					<Card>
 						<Statistic
-							title="总花费"
+							title={
+								<Tooltip title="选定时间范围内的广告总花费">总花费</Tooltip>
+							}
 							value={data.kpi.spend}
 							precision={2}
 							prefix={<DollarOutlined />}
@@ -302,7 +305,11 @@ export default function Dashboard() {
 				<Col span={data.tacos?.has_data ? 4 : 6}>
 					<Card>
 						<Statistic
-							title="总订单"
+							title={
+								<Tooltip title="广告带来的总订单数（SP 7天/SB 14天归因窗口）">
+									总订单
+								</Tooltip>
+							}
 							value={data.kpi.orders}
 							prefix={<ShoppingCartOutlined />}
 						/>
@@ -312,7 +319,11 @@ export default function Dashboard() {
 				<Col span={data.tacos?.has_data ? 5 : 6}>
 					<Card>
 						<Statistic
-							title="平均 ACOS"
+							title={
+								<Tooltip title="ACOS = 花费 / 销售额。越低越好，低于盈亏平衡 ACOS 即盈利">
+									平均 ACOS
+								</Tooltip>
+							}
 							value={data.kpi.acos ? data.kpi.acos * 100 : 0}
 							precision={2}
 							prefix={<PercentageOutlined />}
@@ -324,7 +335,11 @@ export default function Dashboard() {
 				<Col span={data.tacos?.has_data ? 5 : 6}>
 					<Card>
 						<Statistic
-							title="平均 ROAS"
+							title={
+								<Tooltip title="ROAS = 销售额 / 花费。越高越好，>1 表示广告收益大于投入">
+									平均 ROAS
+								</Tooltip>
+							}
 							value={data.kpi.roas ?? 0}
 							precision={2}
 							prefix={<RiseOutlined />}
@@ -336,7 +351,11 @@ export default function Dashboard() {
 					<Col span={6}>
 						<Card>
 							<Statistic
-								title="TACoS"
+								title={
+									<Tooltip title="TACoS = 广告花费 / 总销售额（含有机）。衡量广告对整体营收的依赖度">
+										TACoS
+									</Tooltip>
+								}
 								value={data.tacos.value != null ? data.tacos.value * 100 : 0}
 								precision={2}
 								prefix={<PieChartOutlined />}
