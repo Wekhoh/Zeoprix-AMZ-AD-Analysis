@@ -1,22 +1,24 @@
 from fastapi import APIRouter
+
 from backend.api import (
-    imports,
-    campaigns,
-    placements,
-    operation_logs,
-    summaries,
-    migration,
-    backups,
-    products,
-    organic_sales,
-    data_manage,
-    notes,
-    search_terms,
     analysis,
-    rules,
-    reports,
+    backups,
     benchmarks,
+    campaigns,
+    data_manage,
+    imports,
     inventory,
+    keywords,
+    migration,
+    notes,
+    operation_logs,
+    organic_sales,
+    placements,
+    products,
+    reports,
+    rules,
+    search_terms,
+    summaries,
 )
 
 api_router = APIRouter(prefix="/api")
@@ -38,3 +40,4 @@ api_router.include_router(rules.router, prefix="/rules", tags=["自动化规则"
 api_router.include_router(reports.router, prefix="/reports", tags=["报告导出"])
 api_router.include_router(benchmarks.router, prefix="/benchmarks", tags=["品类基准"])
 api_router.include_router(inventory.router, prefix="/inventory", tags=["库存管理"])
+api_router.include_router(keywords.router, tags=["关键词管理"])
