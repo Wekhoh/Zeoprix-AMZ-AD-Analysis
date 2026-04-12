@@ -4,6 +4,7 @@ from backend.services.rule_engine import (
     _check_condition,
     _batch_campaign_metrics,
     evaluate_rules,
+    get_rule_results,
     seed_default_rules,
 )
 
@@ -71,3 +72,45 @@ class TestEvaluateRules:
             assert rule.last_run_at is not None
             if old_times[rule.id] is None:
                 assert rule.last_run_at is not None
+
+
+class TestDryRun:
+    """B4-1: dry_run mode should return results without side effects."""
+
+    def test_dry_run_returns_results(self, db_session, seed_campaign_data):
+        seeded = seed_default_rules(db_session)
+        assert seeded >= 1
+
+        from backend.models import Rule
+
+        rule = db_session.query(Rule).first()
+        results = get_rule_results(db_session, rule.id, dry_run=True)
+        assert isinstance(results, list)
+
+    def test_dry_run_does_not_update_last_run_at(self, db_session, seed_campaign_data):
+        from backend.models import Rule
+
+        seed_default_rules(db_session)
+        rule = db_session.query(Rule).first()
+        original_last_run = rule.last_run_at
+
+        get_rule_results(db_session, rule.id, dry_run=True)
+
+        db_session.refresh(rule)
+        assert rule.last_run_at == original_last_run, (
+            f"dry_run should NOT update last_run_at. "
+            f"Was {original_last_run!r}, now {rule.last_run_at!r}"
+        )
+
+    def test_normal_run_does_update_last_run_at(self, db_session, seed_campaign_data):
+        """Regression: non-dry-run still updates last_run_at."""
+        from backend.models import Rule
+
+        seed_default_rules(db_session)
+        rule = db_session.query(Rule).first()
+        assert rule.last_run_at is None
+
+        get_rule_results(db_session, rule.id, dry_run=False)
+
+        db_session.refresh(rule)
+        assert rule.last_run_at is not None

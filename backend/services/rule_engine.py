@@ -149,8 +149,14 @@ def evaluate_rules(db: Session) -> list[dict]:
     return results
 
 
-def get_rule_results(db: Session, rule_id: int) -> list[dict]:
-    """评估指定规则"""
+def get_rule_results(db: Session, rule_id: int, dry_run: bool = False) -> list[dict]:
+    """评估指定规则。
+
+    Args:
+        dry_run: if True, skip updating last_run_at and committing.
+            Used for preview ("if I ran this rule, what would trigger?")
+            without side effects.
+    """
     rule = db.query(Rule).filter(Rule.id == rule_id).first()
     if not rule:
         return []
@@ -192,8 +198,9 @@ def get_rule_results(db: Session, rule_id: int) -> list[dict]:
                 }
             )
 
-    rule.last_run_at = now_str
-    db.commit()
+    if not dry_run:
+        rule.last_run_at = now_str
+        db.commit()
     return results
 
 

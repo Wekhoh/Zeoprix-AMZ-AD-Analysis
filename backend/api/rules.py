@@ -134,3 +134,23 @@ def get_single_rule_results(rule_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="规则不存在")
     results = get_rule_results(db, rule_id)
     return {"rule_id": rule_id, "rule_name": rule.name, "results": results}
+
+
+@router.get("/{rule_id}/dry-run")
+def dry_run_rule(rule_id: int, db: Session = Depends(get_db)):
+    """Dry Run 预览：查看该规则如果执行会触发多少活动，不产生任何副作用。
+
+    与 /results 的区别：dry-run 不更新 last_run_at，不写入数据库。
+    运营可以在正式执行前确认影响范围。
+    """
+    rule = db.query(Rule).filter(Rule.id == rule_id).first()
+    if not rule:
+        raise HTTPException(status_code=404, detail="规则不存在")
+    results = get_rule_results(db, rule_id, dry_run=True)
+    return {
+        "rule_id": rule_id,
+        "rule_name": rule.name,
+        "dry_run": True,
+        "total_triggered": len(results),
+        "results": results,
+    }
