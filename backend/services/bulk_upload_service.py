@@ -175,3 +175,119 @@ def generate_bulk_upload_excel(
     wb.save(buf)
     buf.seek(0)
     return buf.read()
+
+
+# Amazon action_type → Bulk Upload Record Type + action column mapping
+_SUGGESTION_ACTION_MAP = {
+    "flag_pause": {"record_type": "Campaign", "state": "paused", "note": "暂停广告活动"},
+    "suggest_bid_decrease": {
+        "record_type": "Campaign",
+        "state": "",
+        "note": "降低竞价（需手动填写新值）",
+    },
+    "suggest_bid_increase": {
+        "record_type": "Campaign",
+        "state": "",
+        "note": "提高竞价（需手动填写新值）",
+    },
+    "suggest_budget_increase": {
+        "record_type": "Campaign",
+        "state": "",
+        "note": "增加日预算（需手动填写新值）",
+    },
+    "suggest_negative": {
+        "record_type": "Campaign Negative Keyword",
+        "state": "enabled",
+        "note": "添加否定关键词",
+    },
+}
+
+SUGGESTION_HEADERS = [
+    "Record Type",
+    "Campaign Name",
+    "State",
+    "Daily Budget",
+    "Bid",
+    "参考: 建议操作",
+    "参考: 触发指标值",
+    "参考: 规则名称",
+]
+
+
+def generate_suggestion_bulk_upload(suggestions: list[dict]) -> bytes:
+    """Generate Amazon Bulk Upload Excel from rule evaluation suggestions.
+
+    Columns marked "参考:" are helper columns the operator should DELETE
+    before uploading to Amazon. They provide context for filling in the
+    actual bid/budget values.
+
+    Args:
+        suggestions: list of dicts from evaluate_rules / get_rule_results.
+            Each dict must have: campaign_name, action_type, recommended_action,
+            triggered_value, rule_name.
+    """
+    wb = Workbook()
+
+    # Separate actionable vs informational suggestions
+    actionable = [s for s in suggestions if s.get("action_type") in _SUGGESTION_ACTION_MAP]
+    informational = [s for s in suggestions if s.get("action_type") not in _SUGGESTION_ACTION_MAP]
+
+    # === Sheet 1: Actionable (can map to bulk upload)
+    ws1 = wb.active
+    ws1.title = "Bulk Upload 操作"
+    ws1.sheet_properties.tabColor = "2563EB"
+
+    ws1.append(SUGGESTION_HEADERS)
+    _style_header(ws1, 1, len(SUGGESTION_HEADERS))
+
+    for s in actionable:
+        mapping = _SUGGESTION_ACTION_MAP[s["action_type"]]
+        row = [
+            mapping["record_type"],
+            safe_cell(s.get("campaign_name", "")),
+            mapping["state"] or "（需填写）",
+            "",  # Daily Budget — operator fills
+            "",  # Bid — operator fills
+            s.get("recommended_action", ""),
+            str(s.get("triggered_value", "")),
+            s.get("rule_name", ""),
+        ]
+        ws1.append(row)
+        for col in range(1, len(SUGGESTION_HEADERS) + 1):
+            ws1.cell(row=ws1.max_row, column=col).font = _BODY_FONT
+            ws1.cell(row=ws1.max_row, column=col).border = _THIN_BORDER
+
+    if not actionable:
+        ws1.append(["", "（无可操作的建议）", "", "", "", "", "", ""])
+
+    _auto_width(ws1)
+
+    # === Sheet 2: Informational (reminders, diagnostics — no bulk upload action)
+    ws2 = wb.create_sheet("参考信息")
+    ws2.sheet_properties.tabColor = "6B7280"
+
+    info_headers = ["广告活动", "建议操作", "触发指标值", "规则名称"]
+    ws2.append(info_headers)
+    _style_header(ws2, 1, len(info_headers))
+
+    for s in informational:
+        row = [
+            safe_cell(s.get("campaign_name", "")),
+            s.get("recommended_action", ""),
+            str(s.get("triggered_value", "")),
+            s.get("rule_name", ""),
+        ]
+        ws2.append(row)
+        for col in range(1, len(info_headers) + 1):
+            ws2.cell(row=ws2.max_row, column=col).font = _BODY_FONT
+            ws2.cell(row=ws2.max_row, column=col).border = _THIN_BORDER
+
+    if not informational:
+        ws2.append(["", "（无参考信息）", "", ""])
+
+    _auto_width(ws2)
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf.read()

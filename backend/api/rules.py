@@ -1,6 +1,7 @@
 """自动化规则 API"""
 
 from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -134,6 +135,31 @@ def get_single_rule_results(rule_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="规则不存在")
     results = get_rule_results(db, rule_id)
     return {"rule_id": rule_id, "rule_name": rule.name, "results": results}
+
+
+@router.get("/suggestions/bulk-upload-export")
+def export_suggestions_bulk_upload(db: Session = Depends(get_db)):
+    """导出所有规则建议为 Amazon Bulk Upload Excel。
+
+    运营下载后：
+    1. 填写 Bid/Budget 列的具体数值
+    2. 删除"参考:"开头的列
+    3. 上传到 Seller Central → Campaign Manager → Bulk Operations
+    """
+    from io import BytesIO
+
+    from fastapi.responses import StreamingResponse
+
+    from backend.services.bulk_upload_service import generate_suggestion_bulk_upload
+
+    results = evaluate_rules(db)
+    excel_bytes = generate_suggestion_bulk_upload(results)
+
+    return StreamingResponse(
+        BytesIO(excel_bytes),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=suggestion_bulk_upload.xlsx"},
+    )
 
 
 @router.get("/{rule_id}/dry-run")
