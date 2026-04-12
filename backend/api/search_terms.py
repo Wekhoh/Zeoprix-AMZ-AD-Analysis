@@ -1,18 +1,19 @@
 """搜索词分析 API"""
 
 from typing import Optional
-from fastapi import APIRouter, HTTPException, UploadFile, File, Depends, Query
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from pydantic import BaseModel
 from backend.database import get_db
-from backend.models import Campaign, KeywordAction
+from backend.models import Campaign, KeywordAction, NegativeWhitelist
 from backend.services.search_term_service import (
-    import_search_terms,
-    get_search_term_summary,
-    get_top_converting_terms,
     classify_search_terms_4bucket,
     get_negative_candidates,
+    get_search_term_summary,
+    get_top_converting_terms,
+    import_search_terms,
 )
 
 router = APIRouter()
@@ -154,3 +155,60 @@ def get_processed_terms(db: Session = Depends(get_db)):
     for term, action in rows:
         result[term] = action
     return result
+
+
+# ============================================================
+# Never-Negative Whitelist CRUD
+# ============================================================
+
+
+class WhitelistAddBody(BaseModel):
+    """Body for adding one or more terms to the whitelist."""
+
+    terms: list[str]
+    reason: str | None = None
+
+
+@router.get("/whitelist")
+def list_whitelist(db: Session = Depends(get_db)):
+    """列出所有白名单搜索词"""
+    rows = db.query(NegativeWhitelist).order_by(NegativeWhitelist.search_term).all()
+    return [
+        {
+            "id": r.id,
+            "search_term": r.search_term,
+            "reason": r.reason,
+            "created_at": str(r.created_at) if r.created_at else None,
+        }
+        for r in rows
+    ]
+
+
+@router.post("/whitelist")
+def add_to_whitelist(body: WhitelistAddBody, db: Session = Depends(get_db)):
+    """批量添加搜索词到白名单。已存在的词自动跳过。"""
+    added = 0
+    skipped = 0
+    for term in body.terms:
+        term = term.strip()
+        if not term:
+            continue
+        existing = db.query(NegativeWhitelist).filter(NegativeWhitelist.search_term == term).first()
+        if existing:
+            skipped += 1
+            continue
+        db.add(NegativeWhitelist(search_term=term, reason=body.reason))
+        added += 1
+    db.commit()
+    return {"added": added, "skipped": skipped}
+
+
+@router.delete("/whitelist/{item_id}")
+def remove_from_whitelist(item_id: int, db: Session = Depends(get_db)):
+    """从白名单移除指定条目"""
+    record = db.query(NegativeWhitelist).filter_by(id=item_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="白名单条目不存在")
+    db.delete(record)
+    db.commit()
+    return {"success": True, "removed": record.search_term}
