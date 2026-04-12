@@ -3,6 +3,7 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -212,3 +213,38 @@ def remove_from_whitelist(item_id: int, db: Session = Depends(get_db)):
     db.delete(record)
     db.commit()
     return {"success": True, "removed": record.search_term}
+
+
+# ============================================================
+# Bulk Upload Export
+# ============================================================
+
+
+@router.get("/bulk-upload-export")
+def export_bulk_upload(
+    action_types: Optional[str] = Query(
+        None,
+        description="Comma-separated action types: harvest_exact,harvest_phrase,negate_exact,negate_phrase",
+    ),
+    db: Session = Depends(get_db),
+):
+    """导出 Amazon Campaign Manager Bulk Upload Excel 文件。
+
+    包含两个 sheet：Harvest Keywords（正向收割）+ Negative Keywords（否定）。
+    运营下载后直接上传到 Seller Central → Campaign Manager → Bulk Operations。
+    """
+    from io import BytesIO
+
+    from backend.services.bulk_upload_service import generate_bulk_upload_excel
+
+    types_list = None
+    if action_types:
+        types_list = [t.strip() for t in action_types.split(",") if t.strip()]
+
+    excel_bytes = generate_bulk_upload_excel(db, action_types=types_list)
+
+    return StreamingResponse(
+        BytesIO(excel_bytes),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=amazon_bulk_upload.xlsx"},
+    )
