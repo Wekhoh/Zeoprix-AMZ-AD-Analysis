@@ -229,6 +229,13 @@ export default function AppLayout() {
 			if (isEditable(e.target)) return;
 			if (e.ctrlKey || e.metaKey || e.altKey) return;
 
+			// "/" opens command palette (vim-style search)
+			if (e.key === "/") {
+				e.preventDefault();
+				toggleCommandPalette();
+				return;
+			}
+
 			if (gPressed && vimNavMap[e.key]) {
 				e.preventDefault();
 				navigate(vimNavMap[e.key]);
