@@ -310,6 +310,25 @@ export default function Rules() {
 				v !== null ? (v < 1 ? `${(v * 100).toFixed(1)}%` : v.toFixed(2)) : "-",
 		},
 		{
+			title: "触发原因",
+			key: "reason",
+			width: 220,
+			render: (_: unknown, record: RuleResult) => {
+				const field = record.condition_field ?? "";
+				const op = record.condition_operator ?? "";
+				const threshold = record.condition_value;
+				const actual = record.triggered_value;
+				const fmtVal = (v: number | null | undefined) =>
+					v == null ? "-" : v < 1 ? `${(v * 100).toFixed(1)}%` : v.toFixed(2);
+				return (
+					<span style={{ fontSize: 12, color: "#6B7280" }}>
+						{field.toUpperCase()} {op} {fmtVal(threshold)} → 实际{" "}
+						{fmtVal(actual)}
+					</span>
+				);
+			},
+		},
+		{
 			title: "建议操作",
 			dataIndex: "recommended_action",
 			key: "action",
