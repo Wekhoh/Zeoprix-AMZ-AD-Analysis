@@ -172,6 +172,23 @@ export default function CampaignDetail() {
 			.then(
 				([campRes, trendRes, placeRes, logRes, noteRes, pSumRes, agRes]) => {
 					setCampaign(campRes.data);
+					// B6-D-14: Track recent campaigns for sidebar
+					try {
+						const RECENT_KEY = "amz_recent_campaigns";
+						const recent: Array<{ id: number; name: string }> = JSON.parse(
+							localStorage.getItem(RECENT_KEY) || "[]",
+						);
+						const campId = campRes.data.id;
+						const campName = campRes.data.name;
+						const filtered = recent.filter((r) => r.id !== campId);
+						filtered.unshift({ id: campId, name: campName });
+						localStorage.setItem(
+							RECENT_KEY,
+							JSON.stringify(filtered.slice(0, 5)),
+						);
+					} catch {
+						/* localStorage full or parse error — non-critical */
+					}
 					setTrends(trendRes.data);
 					setPlacements(placeRes.data?.data ?? placeRes.data);
 					setLogs(logRes.data?.data ?? logRes.data);

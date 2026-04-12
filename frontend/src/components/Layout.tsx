@@ -333,6 +333,53 @@ export default function AppLayout() {
 					items={menuItems}
 					onClick={({ key }) => navigate(key)}
 				/>
+				{!collapsed &&
+					(() => {
+						try {
+							const recent: Array<{ id: number; name: string }> = JSON.parse(
+								localStorage.getItem("amz_recent_campaigns") || "[]",
+							);
+							if (recent.length === 0) return null;
+							return (
+								<div
+									style={{
+										padding: "12px 16px",
+										borderTop: `1px solid ${isDark ? "#1E2129" : "#E5E7EB"}`,
+									}}
+								>
+									<div
+										style={{
+											fontSize: 11,
+											color: isDark ? "#6B7280" : "#9CA3AF",
+											marginBottom: 6,
+										}}
+									>
+										最近查看
+									</div>
+									{recent.slice(0, 5).map((r) => (
+										<div
+											key={r.id}
+											style={{
+												fontSize: 12,
+												padding: "2px 0",
+												cursor: "pointer",
+												color: isDark ? "#D1D5DB" : "#4B5563",
+												overflow: "hidden",
+												textOverflow: "ellipsis",
+												whiteSpace: "nowrap",
+											}}
+											title={r.name}
+											onClick={() => navigate(`/campaigns/${r.id}`)}
+										>
+											{r.name}
+										</div>
+									))}
+								</div>
+							);
+						} catch {
+							return null;
+						}
+					})()}
 			</Sider>
 			<AntLayout style={{ background: isDark ? "#111318" : "#F5F5F7" }}>
 				<Header
