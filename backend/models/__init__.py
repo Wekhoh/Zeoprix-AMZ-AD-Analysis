@@ -13,6 +13,7 @@ from backend.models.organic_sales import OrganicSales
 from backend.models.keyword_action import KeywordAction
 from backend.models.suggestion_status import SuggestionStatus
 from backend.models.inventory import InventorySnapshot
+from backend.models.negative_whitelist import NegativeWhitelist
 
 __all__ = [
     "Base",
@@ -34,4 +35,5 @@ __all__ = [
     "KeywordAction",
     "SuggestionStatus",
     "InventorySnapshot",
+    "NegativeWhitelist",
 ]
