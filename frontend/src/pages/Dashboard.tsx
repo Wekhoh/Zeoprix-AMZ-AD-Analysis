@@ -32,6 +32,7 @@ import OnboardingGuide, {
 import { useFilterParams } from "../hooks/useFilterParams";
 import { useTheme } from "../hooks/useTheme";
 import PageSkeleton from "../components/PageSkeleton";
+import Sparkline from "../components/Sparkline";
 import { calcWowDeltas, WowIndicator } from "../utils/wowDeltas";
 import type {
 	DailyTrend,
@@ -299,6 +300,7 @@ export default function Dashboard() {
 							prefix={<DollarOutlined />}
 							suffix="USD"
 						/>
+						<Sparkline data={data.daily_trend.map((d) => d.spend)} />
 						{wowDeltas && (
 							<WowIndicator
 								delta={wowDeltas.spend}
@@ -318,6 +320,7 @@ export default function Dashboard() {
 							value={data.kpi.orders}
 							prefix={<ShoppingCartOutlined />}
 						/>
+						<Sparkline data={data.daily_trend.map((d) => d.orders)} />
 						{wowDeltas && (
 							<WowIndicator
 								delta={wowDeltas.orders}
@@ -339,6 +342,10 @@ export default function Dashboard() {
 							prefix={<PercentageOutlined />}
 							suffix="%"
 						/>
+						<Sparkline
+							data={data.daily_trend.map((d) => (d.acos ?? 0) * 100)}
+							color="#faad14"
+						/>
 						{wowDeltas && (
 							<WowIndicator
 								delta={wowDeltas.acos}
@@ -359,6 +366,10 @@ export default function Dashboard() {
 							value={data.kpi.roas ?? 0}
 							precision={2}
 							prefix={<RiseOutlined />}
+						/>
+						<Sparkline
+							data={data.daily_trend.map((d) => d.roas ?? 0)}
+							color="#52c41a"
 						/>
 						{wowDeltas && (
 							<WowIndicator
