@@ -29,9 +29,16 @@ def list_campaigns(
     marketplace_id: Optional[int] = Query(None),
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
+    page: Optional[int] = Query(None, ge=1),
+    page_size: Optional[int] = Query(None, ge=1, le=500),
     db: Session = Depends(get_db),
 ):
-    """获取广告活动列表（含 KPI）"""
+    """获取广告活动列表（含 KPI）.
+
+    Backward-compatible pagination: if neither ``page`` nor ``page_size`` is
+    supplied, returns a flat list (legacy shape used by existing frontend).
+    If either is supplied, returns ``{data, total, page, page_size}``.
+    """
     q = db.query(Campaign)
     if status:
         q = q.filter(Campaign.status == status)
@@ -39,7 +46,16 @@ def list_campaigns(
         q = q.filter(Campaign.ad_type == ad_type)
     if marketplace_id:
         q = q.filter(Campaign.marketplace_id == marketplace_id)
-    campaigns = q.order_by(Campaign.name).all()
+    q = q.order_by(Campaign.name)
+
+    paginated = page is not None or page_size is not None
+    total = q.count() if paginated else 0
+    if paginated:
+        _page = page or 1
+        _size = page_size or 50
+        campaigns = q.offset((_page - 1) * _size).limit(_size).all()
+    else:
+        campaigns = q.all()
 
     # Build KPI lookup from summary_by_campaign (single batch query)
     kpi_list = summary_by_campaign(db, date_from, date_to, marketplace_id)
@@ -86,6 +102,14 @@ def list_campaigns(
         except (json.JSONDecodeError, TypeError):
             row["tags"] = []
         result.append(row)
+
+    if paginated:
+        return {
+            "data": result,
+            "total": total,
+            "page": page or 1,
+            "page_size": page_size or 50,
+        }
     return result
 
 
