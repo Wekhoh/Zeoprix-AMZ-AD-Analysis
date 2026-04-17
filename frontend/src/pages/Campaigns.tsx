@@ -29,6 +29,7 @@ import ColumnSettingsButton, {
 } from "../components/ColumnSettingsButton";
 import { useFilterParams } from "../hooks/useFilterParams";
 import { useColumnVisibility } from "../hooks/useColumnVisibility";
+import { fmtUsd, fmtPct, fmtNum } from "../utils/formatters";
 import type { Campaign } from "../types/api";
 
 interface FilterPreset {
@@ -65,13 +66,6 @@ const AD_TYPE_TABS = [
 	{ key: "SD", label: "SD" },
 	{ key: "SBV", label: "SBV" },
 ];
-
-const fmtUsd = (v: number | undefined) =>
-	v != null ? `$${v.toFixed(2)}` : "-";
-const fmtPct = (v: number | null | undefined) =>
-	v != null ? `${(v * 100).toFixed(1)}%` : "-";
-const fmtNum = (v: number | undefined) =>
-	v != null ? v.toLocaleString() : "-";
 
 export default function Campaigns() {
 	const [campaigns, setCampaigns] = useState<Campaign[]>([]);
