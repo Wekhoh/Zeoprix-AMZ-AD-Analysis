@@ -5,7 +5,11 @@ import { exportToCsv } from "../utils/exportCsv";
 import api from "../api/client";
 import FilterToolbar from "../components/FilterToolbar";
 import PageSkeleton from "../components/PageSkeleton";
+import ColumnSettingsButton, {
+	type ColumnDescriptor,
+} from "../components/ColumnSettingsButton";
 import { useFilterParams } from "../hooks/useFilterParams";
+import { useColumnVisibility } from "../hooks/useColumnVisibility";
 import type { OperationLog } from "../types/api";
 
 interface PaginatedResponse<T> {
@@ -17,6 +21,17 @@ interface PaginatedResponse<T> {
 
 const DEFAULT_PAGE_SIZE = 50;
 
+const OPLOG_COLUMN_DESCRIPTORS: ColumnDescriptor[] = [
+	{ key: "date", label: "日期" },
+	{ key: "time", label: "时间" },
+	{ key: "campaign", label: "广告活动", required: true },
+	{ key: "change", label: "变更类型" },
+	{ key: "from", label: "修改前" },
+	{ key: "to", label: "修改后" },
+	{ key: "level", label: "层级" },
+];
+const OPLOG_COLUMN_KEYS = OPLOG_COLUMN_DESCRIPTORS.map((c) => c.key);
+
 export default function OperationLogs() {
 	const [data, setData] = useState<OperationLog[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -24,6 +39,10 @@ export default function OperationLogs() {
 	const [currentPage, setCurrentPage] = useState(1);
 	const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 	const { dateFrom, dateTo, campaignId, buildQueryString } = useFilterParams();
+	const [hiddenCols, toggleCol, resetCols] = useColumnVisibility(
+		"operation_logs_hidden_cols",
+		OPLOG_COLUMN_KEYS,
+	);
 
 	const fetchData = useCallback(
 		(page: number, size: number) => {
@@ -63,7 +82,8 @@ export default function OperationLogs() {
 		{ title: "层级", dataIndex: "level_type", key: "level", width: 90 },
 	];
 
-	const exportColumns = columns.map((c) => ({
+	const visibleColumns = columns.filter((c) => !hiddenCols.has(c.key));
+	const exportColumns = visibleColumns.map((c) => ({
 		title: c.title,
 		dataIndex: c.dataIndex as string,
 	}));
@@ -73,7 +93,15 @@ export default function OperationLogs() {
 	return (
 		<div>
 			<Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
-				<FilterToolbar />
+				<div style={{ display: "flex", alignItems: "center" }}>
+					<FilterToolbar />
+					<ColumnSettingsButton
+						columns={OPLOG_COLUMN_DESCRIPTORS}
+						hiddenKeys={hiddenCols}
+						onToggle={toggleCol}
+						onReset={resetCols}
+					/>
+				</div>
 				<Button
 					icon={<DownloadOutlined />}
 					onClick={() => exportToCsv(data, exportColumns, "操作日志")}
@@ -82,7 +110,7 @@ export default function OperationLogs() {
 				</Button>
 			</Flex>
 			<Table<OperationLog>
-				columns={columns}
+				columns={visibleColumns}
 				dataSource={data}
 				rowKey="id"
 				size="small"

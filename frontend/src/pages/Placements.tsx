@@ -6,6 +6,10 @@ import { exportToCsv } from "../utils/exportCsv";
 import api from "../api/client";
 import FilterToolbar from "../components/FilterToolbar";
 import PageHelp from "../components/PageHelp";
+import ColumnSettingsButton, {
+	type ColumnDescriptor,
+} from "../components/ColumnSettingsButton";
+import { useColumnVisibility } from "../hooks/useColumnVisibility";
 import PageSkeleton from "../components/PageSkeleton";
 import { useFilterParams } from "../hooks/useFilterParams";
 import type { PlacementRecord } from "../types/api";
@@ -19,6 +23,22 @@ interface PaginatedResponse<T> {
 
 const DEFAULT_PAGE_SIZE = 50;
 
+const PLACEMENTS_COLUMN_DESCRIPTORS: ColumnDescriptor[] = [
+	{ key: "date", label: "日期" },
+	{ key: "campaign", label: "广告活动", required: true },
+	{ key: "placement", label: "展示位置" },
+	{ key: "imp", label: "曝光量" },
+	{ key: "clk", label: "点击量" },
+	{ key: "ctr", label: "CTR" },
+	{ key: "spend", label: "花费" },
+	{ key: "cpc", label: "CPC" },
+	{ key: "ord", label: "订单" },
+	{ key: "sales", label: "销售额" },
+	{ key: "roas", label: "ROAS" },
+	{ key: "acos", label: "ACOS" },
+];
+const PLACEMENTS_COLUMN_KEYS = PLACEMENTS_COLUMN_DESCRIPTORS.map((c) => c.key);
+
 export default function Placements() {
 	const [data, setData] = useState<PlacementRecord[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -26,6 +46,10 @@ export default function Placements() {
 	const [currentPage, setCurrentPage] = useState(1);
 	const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 	const { dateFrom, dateTo, campaignId, buildQueryString } = useFilterParams();
+	const [hiddenCols, toggleCol, resetCols] = useColumnVisibility(
+		"placements_hidden_cols",
+		PLACEMENTS_COLUMN_KEYS,
+	);
 
 	const fetchData = useCallback(
 		(page: number, size: number) => {
@@ -119,7 +143,8 @@ export default function Placements() {
 		},
 	];
 
-	const exportColumns = columns.map((c) => ({
+	const visibleColumns = columns.filter((c) => !hiddenCols.has(c.key));
+	const exportColumns = visibleColumns.map((c) => ({
 		title: c.title,
 		dataIndex: c.dataIndex as string,
 	}));
@@ -131,6 +156,12 @@ export default function Placements() {
 			<Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
 				<div style={{ display: "flex", alignItems: "center" }}>
 					<FilterToolbar />
+					<ColumnSettingsButton
+						columns={PLACEMENTS_COLUMN_DESCRIPTORS}
+						hiddenKeys={hiddenCols}
+						onToggle={toggleCol}
+						onReset={resetCols}
+					/>
 					<PageHelp
 						title="展示位置帮助"
 						content="展示位置数据按日期降序排列。使用筛选器按日期范围和广告活动过滤。点击「导出 CSV」下载当前筛选结果。"
@@ -144,7 +175,7 @@ export default function Placements() {
 				</Button>
 			</Flex>
 			<Table<PlacementRecord>
-				columns={columns}
+				columns={visibleColumns}
 				dataSource={data}
 				rowKey="id"
 				size="small"
