@@ -28,6 +28,7 @@ import {
 } from "@ant-design/icons";
 import ReactECharts from "echarts-for-react";
 import { withTheme } from "../utils/chartTheme";
+import { fmtPct, fmtUsd } from "../utils/formatters";
 import { calcWowDeltas, WowIndicator } from "../utils/wowDeltas";
 import api from "../api/client";
 import { useTheme } from "../hooks/useTheme";
@@ -442,10 +443,6 @@ export default function CampaignDetail() {
 		{ title: "层级", dataIndex: "level_type", key: "level", width: 90 },
 	];
 
-	const fmtPct = (v: number | null) =>
-		v != null ? `${(v * 100).toFixed(2)}%` : "-";
-	const fmtUsd = (v: number | null) => (v != null ? `$${v.toFixed(2)}` : "-");
-
 	const placementSummaryColumns = [
 		{
 			title: "展示位置",
@@ -505,7 +502,7 @@ export default function CampaignDetail() {
 							color: v > 0.5 ? "#ff4d4f" : v < 0.25 ? "#52c41a" : undefined,
 						}}
 					>
-						{fmtPct(v)}
+						{fmtPct(v, 2)}
 					</span>
 				);
 			},
@@ -514,7 +511,7 @@ export default function CampaignDetail() {
 			title: "CTR",
 			dataIndex: "ctr",
 			key: "ctr",
-			render: (v: number | null) => fmtPct(v),
+			render: (v: number | null) => fmtPct(v, 2),
 		},
 		{
 			title: "CPC",
@@ -623,7 +620,7 @@ export default function CampaignDetail() {
 												v > 0.5 ? "#ff4d4f" : v < 0.25 ? "#52c41a" : undefined,
 										}}
 									>
-										{fmtPct(v)}
+										{fmtPct(v, 2)}
 									</span>
 								);
 							},
@@ -699,7 +696,7 @@ export default function CampaignDetail() {
 											key: "acos",
 											width: 80,
 											render: (v: number | null) =>
-												v != null ? fmtPct(v) : "-",
+												v != null ? fmtPct(v, 2) : "-",
 										},
 										{
 											title: "ROAS",
