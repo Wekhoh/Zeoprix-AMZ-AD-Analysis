@@ -54,6 +54,141 @@ AUTO_TARGETING_TYPES = {
     "Complements": "展示在互补品详情页",
 }
 
+# Human-readable ad-type labels, used in UI tabs and alerts.
+AD_TYPE_LABELS = {
+    "SP": "Sponsored Products",
+    "SB": "Sponsored Brands",
+    "SBV": "Sponsored Brands Video",
+    "SD": "Sponsored Display",
+    "ST": "Sponsored TV",
+    "DSP": "Amazon DSP",
+}
+
+# KPI field catalog by ad type.
+#
+# Every ad type shares the "core" set (impressions/clicks/spend/orders/sales +
+# derived acos/roas/ctr/cpc). The "exclusive" set lists fields that ONLY exist
+# for that type — frontend should branch on ad_type to show/hide these columns,
+# and CSV parsers should map these headers only when the file was detected as
+# that type.
+#
+# Field names match the Amazon Ads API v2 reporting schema (2025-2026),
+# chosen so a future SP API integration can reuse the same keys.
+KPI_FIELDS_CORE = (
+    "impressions",
+    "clicks",
+    "spend",
+    "orders",
+    "sales",
+    "acos",
+    "roas",
+    "ctr",
+    "cpc",
+)
+
+KPI_FIELDS_BY_AD_TYPE: dict[str, tuple[str, ...]] = {
+    # Sponsored Products — baseline set, nothing exclusive
+    "SP": KPI_FIELDS_CORE,
+    # Sponsored Brands — brand-awareness + new-to-brand metrics
+    "SB": KPI_FIELDS_CORE
+    + (
+        "attributedBrandedSearches14d",
+        "attributedOrdersNewToBrand14d",
+        "attributedSalesNewToBrand14d",
+        "attributedOrdersNewToBrandPercentage14d",
+        "topOfSearchImpressionShare",
+        "searchTermImpressionShare",
+        "searchTermImpressionRank",
+        "attributedBrandStorePageViews14d",
+    ),
+    # Sponsored Brands Video — SB plus video engagement
+    "SBV": KPI_FIELDS_CORE
+    + (
+        "attributedBrandedSearches14d",
+        "attributedOrdersNewToBrand14d",
+        "videoViews",
+        "video5SecondViews",
+        "videoCompleteViews",
+        "video5SecondViewRate",
+        "videoCompleteViewRate",
+        "videoUnmutes",
+        "vctr",
+        "vtr",
+    ),
+    # Sponsored Display — viewable-impression + cart-intent metrics
+    "SD": KPI_FIELDS_CORE
+    + (
+        "viewableImpressions",
+        "attributedDetailPageView14d",
+        "attributedDetailPageViewNewToBrand14d",
+        "attributedAddToCarts14d",
+        "attributedAddToCartsPercentage14d",
+        "attributedAddToCartClicks14d",
+        "attributedBrandedSearches14d",
+        "attributedOrdersNewToBrand14d",
+        "viewAttributedSales14d",
+        "viewAttributedDetailPageView14d",
+    ),
+    # Sponsored TV — limited rollout (2024+). Schema still stabilizing;
+    # placeholder core set only. Extend when Unified Reporting exposes stable columns.
+    "ST": KPI_FIELDS_CORE,
+}
+
+# Chinese labels for ad-type-specific KPI columns. Used by the frontend
+# column-settings dropdown when an SB/SD/SBV report is active.
+KPI_FIELD_LABELS = {
+    "impressions": "曝光",
+    "clicks": "点击",
+    "spend": "花费",
+    "orders": "订单",
+    "sales": "销售额",
+    "acos": "ACOS",
+    "roas": "ROAS",
+    "ctr": "CTR",
+    "cpc": "CPC",
+    # SB
+    "attributedBrandedSearches14d": "品牌搜索 (14d)",
+    "attributedOrdersNewToBrand14d": "新客订单 (14d)",
+    "attributedSalesNewToBrand14d": "新客销售 (14d)",
+    "attributedOrdersNewToBrandPercentage14d": "新客订单占比",
+    "topOfSearchImpressionShare": "置顶搜索份额",
+    "searchTermImpressionShare": "搜索词展示份额",
+    "searchTermImpressionRank": "搜索词展示排名",
+    "attributedBrandStorePageViews14d": "品牌店铺访问",
+    # SBV
+    "videoViews": "视频播放",
+    "video5SecondViews": "5秒播放",
+    "videoCompleteViews": "完整播放",
+    "video5SecondViewRate": "5秒率",
+    "videoCompleteViewRate": "完整率",
+    "videoUnmutes": "取消静音",
+    "vctr": "视频 CTR",
+    "vtr": "视频观看率",
+    # SD
+    "viewableImpressions": "可见曝光",
+    "attributedDetailPageView14d": "详情页浏览 (14d)",
+    "attributedDetailPageViewNewToBrand14d": "新客详情页",
+    "attributedAddToCarts14d": "加购 (14d)",
+    "attributedAddToCartsPercentage14d": "加购率",
+    "attributedAddToCartClicks14d": "加购点击",
+    "viewAttributedSales14d": "视图归因销售",
+    "viewAttributedDetailPageView14d": "视图归因详情页",
+}
+
+
+def get_kpi_fields(ad_type: str) -> tuple[str, ...]:
+    """Return the KPI field catalog for a given ad type (core + exclusive).
+
+    Unknown ad_types fall back to the SP (core-only) set so the UI still
+    has something sensible to show.
+    """
+    return KPI_FIELDS_BY_AD_TYPE.get(ad_type.upper(), KPI_FIELDS_CORE)
+
+
+def get_kpi_exclusive_fields(ad_type: str) -> tuple[str, ...]:
+    """Fields that ONLY exist for this ad type (not in the core set)."""
+    return tuple(f for f in get_kpi_fields(ad_type) if f not in KPI_FIELDS_CORE)
+
 
 def get_attribution_window(ad_type: str) -> int:
     return ATTRIBUTION_WINDOW.get(ad_type, 7)
