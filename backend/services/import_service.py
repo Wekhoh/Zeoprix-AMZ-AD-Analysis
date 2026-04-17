@@ -34,6 +34,7 @@ from backend.utils.campaign_parser import (
     extract_default_bid,
     get_portfolio_name,
 )
+from backend.utils.encoding_helper import decode_with_fallback
 
 
 def _get_or_create_campaign(
@@ -190,13 +191,8 @@ async def process_placement_csv_upload(db: Session, files: list[UploadFile]) -> 
                 )
                 continue
             # 尝试多种编码
-            for encoding in ["utf-8-sig", "utf-8", "gbk", "gb2312"]:
-                try:
-                    content = raw.decode(encoding)
-                    break
-                except (UnicodeDecodeError, LookupError):
-                    continue
-            else:
+            content = decode_with_fallback(raw)
+            if content is None:
                 details.append(
                     ImportDetail(message=f"无法解码文件: {file.filename}", level="error")
                 )
@@ -472,14 +468,7 @@ async def preview_csv_upload(files: list[UploadFile], db=None) -> dict:
     for file in files:
         try:
             raw = await file.read()
-            # Try multiple encodings
-            content = ""
-            for encoding in ["utf-8-sig", "utf-8", "gbk", "gb2312"]:
-                try:
-                    content = raw.decode(encoding)
-                    break
-                except (UnicodeDecodeError, LookupError):
-                    continue
+            content = decode_with_fallback(raw) or ""
 
             if not content:
                 previews.append(
