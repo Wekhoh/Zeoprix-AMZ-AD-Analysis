@@ -1,4 +1,4 @@
-import { Button, Checkbox, Divider, Dropdown } from "antd";
+import { Button, Checkbox, Divider, Popover } from "antd";
 import { SettingOutlined } from "@ant-design/icons";
 
 export interface ColumnDescriptor {
@@ -31,27 +31,7 @@ export default function ColumnSettingsButton({
 	onReset,
 }: ColumnSettingsButtonProps) {
 	const content = (
-		<div
-			style={{
-				background: "var(--ant-color-bg-elevated, #fff)",
-				border: "1px solid var(--ant-color-border, #d9d9d9)",
-				borderRadius: 8,
-				padding: "8px 12px",
-				minWidth: 180,
-				boxShadow:
-					"0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12)",
-			}}
-		>
-			<div
-				style={{
-					fontSize: 12,
-					fontWeight: 500,
-					opacity: 0.65,
-					marginBottom: 6,
-				}}
-			>
-				显示的列
-			</div>
+		<div style={{ minWidth: 180 }}>
 			<div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
 				{columns.map((col) => {
 					const checked = !hiddenKeys.has(col.key);
@@ -85,14 +65,15 @@ export default function ColumnSettingsButton({
 	);
 
 	return (
-		<Dropdown
-			trigger={["click"]}
+		<Popover
+			trigger="click"
 			placement="bottomRight"
-			popupRender={() => content}
+			title="显示的列"
+			content={content}
 		>
 			<Button icon={<SettingOutlined />} aria-label="列设置">
 				列
 			</Button>
-		</Dropdown>
+		</Popover>
 	);
 }
