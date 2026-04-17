@@ -74,6 +74,70 @@ class TestOperationLogDetection:
         )
 
 
+class TestSponsoredBrandsDetection:
+    def test_sb_header_with_branded_searches(self):
+        csv = (
+            "campaignName,impressions,clicks,cost,"
+            "attributedSales14d,attributedBrandedSearches14d\n"
+            "Brand-Camp-1,10000,200,50.00,1500.00,40\n"
+        )
+        assert detect_csv_type(csv) == "sb"
+
+    def test_sb_header_with_top_of_search_impression_share(self):
+        csv = (
+            "campaignName,keywordText,impressions,clicks,topOfSearchImpressionShare\n"
+            "C,kw,5000,100,0.42\n"
+        )
+        assert detect_csv_type(csv) == "sb"
+
+    def test_sb_filename_hint(self):
+        # Generic content but filename says "SB" or "Sponsored Brands"
+        csv = "col_a,col_b,col_c\n1,2,3"
+        assert detect_csv_type(csv, "sb-campaign-report.csv") == "sb"
+        assert detect_csv_type(csv, "Sponsored Brands Weekly.csv") == "sb"
+        assert detect_csv_type(csv, "2025 品牌广告周报.csv") == "sb"
+
+
+class TestSponsoredDisplayDetection:
+    def test_sd_header_with_viewable_impressions(self):
+        csv = (
+            "campaignName,impressions,viewableImpressions,clicks,cost\n"
+            "SD-Camp,10000,7500,50,20.00\n"
+        )
+        assert detect_csv_type(csv) == "sd"
+
+    def test_sd_header_with_add_to_carts(self):
+        # 2025 new metric — unique to SD
+        csv = "campaignName,attributedAddToCarts14d,attributedAddToCartsPercentage14d\nC,15,0.03\n"
+        assert detect_csv_type(csv) == "sd"
+
+    def test_sd_filename_hint(self):
+        csv = "col_a,col_b\n1,2"
+        assert detect_csv_type(csv, "sd_campaign_2025.csv") == "sd"
+        assert detect_csv_type(csv, "Sponsored Display Performance.csv") == "sd"
+
+
+class TestSponsoredBrandsVideoDetection:
+    def test_sbv_header_with_video_views(self):
+        csv = (
+            "campaignName,impressions,clicks,videoViews,video5SecondViews,videoCompleteViews\n"
+            "SBV-Camp,5000,100,4800,1200,800\n"
+        )
+        assert detect_csv_type(csv) == "sbv"
+
+    def test_sbv_wins_over_sb_when_both_markers_present(self):
+        # Per spec: SBV reports include SB markers plus video metrics.
+        # We return "sbv" (more specific) not "sb".
+        csv = "campaignName,attributedBrandedSearches14d,videoViews\nSBV-Camp,20,3000\n"
+        assert detect_csv_type(csv) == "sbv"
+
+    def test_sbv_filename_hint(self):
+        csv = "col_a\n1"
+        assert detect_csv_type(csv, "sbv-campaigns.csv") == "sbv"
+        assert detect_csv_type(csv, "sponsored-brands-video-2026.csv") == "sbv"
+        assert detect_csv_type(csv, "品牌视频报告.csv") == "sbv"
+
+
 class TestEdgeCases:
     def test_empty_content_is_unknown(self):
         assert detect_csv_type("") == "unknown"
