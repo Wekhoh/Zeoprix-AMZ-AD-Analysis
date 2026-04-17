@@ -6,19 +6,21 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.logging_config import get_logger
 from backend.models import (
-    Campaign,
     AdGroup,
-    PlacementRecord,
-    OperationLog,
-    CampaignDailyRecord,
     AdGroupDailyRecord,
-    SearchTermReport,
-    Note,
-    OrganicSales,
+    Campaign,
+    CampaignDailyRecord,
     ImportHistory,
-    KeywordAction,
-    SuggestionStatus,
     InventorySnapshot,
+    Keyword,
+    KeywordAction,
+    KeywordDailyRecord,
+    Note,
+    OperationLog,
+    OrganicSales,
+    PlacementRecord,
+    SearchTermReport,
+    SuggestionStatus,
 )
 from backend.services.backup_service import create_backup
 
@@ -53,8 +55,13 @@ def clear_advertising_data(db: Session = Depends(get_db)):
     """
     backup_result = create_backup(db, backup_type="pre_clear")
 
+    # FK-safe deletion order:
+    #   KeywordDailyRecord -> Keyword -> AdGroup (Keyword hangs off AdGroup)
+    #   KeywordAction.from_campaign_id -> Campaign (must precede Campaign)
     counts = {}
     for model, label in [
+        (KeywordDailyRecord, "keyword_daily"),
+        (Keyword, "keywords"),
         (PlacementRecord, "placement_records"),
         (OperationLog, "operation_logs"),
         (CampaignDailyRecord, "campaign_daily"),
@@ -62,10 +69,10 @@ def clear_advertising_data(db: Session = Depends(get_db)):
         (SearchTermReport, "search_terms"),
         (Note, "notes"),
         (AdGroup, "ad_groups"),
+        (KeywordAction, "keyword_actions"),
         (Campaign, "campaigns"),
         (OrganicSales, "organic_sales"),
         (ImportHistory, "import_history"),
-        (KeywordAction, "keyword_actions"),
         (SuggestionStatus, "suggestion_status"),
         (InventorySnapshot, "inventory_snapshots"),
     ]:
