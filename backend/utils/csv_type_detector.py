@@ -3,12 +3,16 @@
 Used by the batch-import flow so a seller can drag multiple files and the
 server routes each to the correct parser without asking "which kind?".
 
-Signatures were lifted directly from the existing per-type parsers:
-- placement: backend/services/csv_parser.py → "Placement" column
-- keyword: backend/services/keyword_service.py::COLUMN_MAP
+Signatures were lifted directly from the existing per-type parsers and
+from the Amazon Ads API v2 reporting docs (2025-2026):
+- placement: backend/services/csv_parser.py → "Placement" column (SP)
+- keyword: backend/services/keyword_service.py::COLUMN_MAP (SP)
 - inventory: backend/services/inventory_service.py::COLUMN_MAP
 - search_term: well-known "Customer Search Term" / "Search Term" header
 - operation_log: pipe-delimited TXT, not CSV — detected via format shape
+- sbv (Sponsored Brands Video): videoViews / video5SecondViews exclusive
+- sb (Sponsored Brands): attributedBrandedSearches14d / topOfSearchImpressionShare
+- sd (Sponsored Display): viewableImpressions / attributedAddToCarts14d
 """
 
 from __future__ import annotations
@@ -21,10 +25,14 @@ CsvType = Literal[
     "operation_log",
     "inventory",
     "keyword",
+    "sb",
+    "sd",
+    "sbv",
     "unknown",
 ]
 
 # Authoritative signature set per file type. First match wins. Order matters:
+# - SBV (video subset of SB) before SB — video metrics are the tiebreaker
 # - search_term before keyword (some keyword reports include search term column)
 # - inventory before placement (both may appear but inventory is the more specific)
 _SEARCH_TERM_MARKERS = frozenset({"Customer Search Term", "Search Term", "搜索词", "客户搜索词"})
@@ -43,6 +51,51 @@ _INVENTORY_MARKERS = frozenset(
         "可售数量",
         "可用库存",
         "供货天数",
+    }
+)
+
+# Sponsored Brands Video — metrics that only appear when creative is a video.
+# Per 2025-2026 Amazon Ads API docs, SBV reports reuse the SB report schema
+# plus these exclusive columns.
+_SBV_MARKERS = frozenset(
+    {
+        "videoViews",
+        "video5SecondViews",
+        "videoCompleteViews",
+        "video5SecondViewRate",
+        "videoCompleteViewRate",
+        "videoUnmutes",
+        "vctr",
+        "vtr",
+    }
+)
+
+# Sponsored Brands — brand-awareness metrics exclusive to SB.
+# NTB (new-to-brand) + Top-of-search impression share are the hallmarks.
+_SB_MARKERS = frozenset(
+    {
+        "attributedBrandedSearches14d",
+        "attributedOrdersNewToBrand14d",
+        "attributedSalesNewToBrand14d",
+        "attributedOrdersNewToBrandPercentage14d",
+        "topOfSearchImpressionShare",
+        "searchTermImpressionShare",
+        "searchTermImpressionRank",
+        "attributedBrandStorePageViews14d",
+    }
+)
+
+# Sponsored Display — viewable-impressions + detail-page metrics exclusive to SD.
+_SD_MARKERS = frozenset(
+    {
+        "viewableImpressions",
+        "attributedDetailPageView14d",
+        "attributedDetailPageViewNewToBrand14d",
+        "attributedAddToCarts14d",
+        "attributedAddToCartsPercentage14d",
+        "attributedAddToCartClicks14d",
+        "viewAttributedSales14d",
+        "viewAttributedDetailPageView14d",
     }
 )
 
@@ -81,7 +134,17 @@ def detect_csv_type(content: str, filename: str | None = None) -> CsvType:
             if cleaned:
                 tokens.add(cleaned)
 
-    # Order matters: check more specific before more generic.
+    # Order matters: check most specific before more generic.
+    # SBV first (video metrics are exclusive to Sponsored Brands Video).
+    if tokens & _SBV_MARKERS:
+        return "sbv"
+    # SB signature (NTB + Top-of-search IS). Check after SBV since video SB
+    # reports also contain these SB markers.
+    if tokens & _SB_MARKERS:
+        return "sb"
+    # SD signature (viewable impressions + add-to-cart metrics).
+    if tokens & _SD_MARKERS:
+        return "sd"
     if tokens & _SEARCH_TERM_MARKERS:
         return "search_term"
     if tokens & _INVENTORY_MARKERS:
@@ -93,13 +156,33 @@ def detect_csv_type(content: str, filename: str | None = None) -> CsvType:
 
     # Filename hint fallback
     if filename:
-        if "搜索词" in filename or "search-term" in filename.lower():
+        low = filename.lower()
+        if "搜索词" in filename or "search-term" in low:
             return "search_term"
-        if "库存" in filename or "inventory" in filename.lower():
+        if "库存" in filename or "inventory" in low:
             return "inventory"
-        if "展示位置" in filename or "placement" in filename.lower():
+        if "展示位置" in filename or "placement" in low:
             return "placement"
-        if "关键词" in filename or "keyword" in filename.lower():
+        if "关键词" in filename or "keyword" in low:
             return "keyword"
+        # New 2026: SB / SD / SBV filename hints
+        if "sponsored-brands-video" in low or "sbv" in low or "品牌视频" in filename:
+            return "sbv"
+        if (
+            "sponsored-brands" in low
+            or "sponsored brands" in low
+            or low.startswith("sb-")
+            or low.startswith("sb_")
+            or "品牌广告" in filename
+        ):
+            return "sb"
+        if (
+            "sponsored-display" in low
+            or "sponsored display" in low
+            or low.startswith("sd-")
+            or low.startswith("sd_")
+            or "展示广告" in filename
+        ):
+            return "sd"
 
     return "unknown"
