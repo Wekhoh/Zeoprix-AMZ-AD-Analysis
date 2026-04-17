@@ -10,7 +10,6 @@ import {
 	Tag,
 	Row,
 	Col,
-	Statistic,
 	Empty,
 } from "antd";
 import {
@@ -157,9 +156,6 @@ export default function Analysis() {
 		acos: "ACOS",
 		cvr: "CVR",
 	};
-
-	// For ACOS: lower is better. For everything else: higher is better.
-	const lowerIsBetter = new Set(["acos", "cpc", "spend"]);
 
 	const formatValue = (key: string, val: number | null): string => {
 		if (val === null || val === undefined) return "-";
