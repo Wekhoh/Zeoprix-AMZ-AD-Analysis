@@ -30,9 +30,8 @@ import api from "../api/client";
 import FilterToolbar from "../components/FilterToolbar";
 import EmptyState from "../components/EmptyState";
 import PageHelp from "../components/PageHelp";
-import OnboardingGuide, {
-	isOnboardingDismissed,
-} from "../components/OnboardingGuide";
+import OnboardingGuide from "../components/OnboardingGuide";
+import { isOnboardingDismissed } from "../utils/onboarding";
 import { useFilterParams } from "../hooks/useFilterParams";
 import { useTheme } from "../hooks/useTheme";
 import { useCardOrder } from "../hooks/useCardOrder";

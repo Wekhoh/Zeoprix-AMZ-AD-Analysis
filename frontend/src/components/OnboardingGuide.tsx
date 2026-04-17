@@ -8,8 +8,7 @@ import {
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../hooks/useTheme";
-
-const ONBOARDING_KEY = "amz-onboarding-done";
+import { markOnboardingDismissed } from "../utils/onboarding";
 
 interface OnboardingGuideProps {
 	open: boolean;
@@ -62,7 +61,7 @@ export default function OnboardingGuide({
 
 	const handleClose = () => {
 		if (dontShowAgain) {
-			localStorage.setItem(ONBOARDING_KEY, "true");
+			markOnboardingDismissed();
 		}
 		onClose();
 	};
@@ -147,8 +146,4 @@ export default function OnboardingGuide({
 			</div>
 		</Modal>
 	);
-}
-
-export function isOnboardingDismissed(): boolean {
-	return localStorage.getItem(ONBOARDING_KEY) === "true";
 }
