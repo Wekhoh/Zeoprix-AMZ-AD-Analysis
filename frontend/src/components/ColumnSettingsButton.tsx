@@ -18,7 +18,7 @@ interface ColumnSettingsButtonProps {
 }
 
 /**
- * Gear-icon Dropdown that lets users show/hide table columns.
+ * Gear-icon Popover that lets users show/hide table columns.
  *
  * Design: rendered in the page header next to filters. Each column appears as
  * a checkbox; required columns are disabled-but-checked. A "重置" button at
