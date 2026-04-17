@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Input, Modal } from "antd";
+import type { InputRef } from "antd";
 import {
 	DashboardOutlined,
 	UploadOutlined,
@@ -39,7 +40,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
 	const { isDark } = useTheme();
 	const [query, setQuery] = useState("");
 	const [selectedIndex, setSelectedIndex] = useState(0);
-	const inputRef = useRef<ReturnType<typeof Input.Search> | null>(null);
+	const inputRef = useRef<InputRef>(null);
 	const listRef = useRef<HTMLDivElement>(null);
 
 	const handleNavigate = useCallback(
@@ -231,13 +232,13 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
 			width={520}
 			styles={{
 				body: { padding: 0 },
-				content: {
-					background: bgColor,
-					borderRadius: 12,
-					overflow: "hidden",
-				},
 			}}
-			style={{ top: "15%" }}
+			style={{
+				top: "15%",
+				background: bgColor,
+				borderRadius: 12,
+				overflow: "hidden",
+			}}
 		>
 			<div onKeyDown={handleKeyDown}>
 				<div
@@ -247,7 +248,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
 					}}
 				>
 					<Input
-						ref={inputRef as React.Ref<ReturnType<typeof Input>>}
+						ref={inputRef}
 						placeholder="搜索页面或操作... (Ctrl+K)"
 						value={query}
 						onChange={(e) => setQuery(e.target.value)}
