@@ -5,7 +5,6 @@ escapes BACKUP_DIR, protecting delete_backup / restore_backup /
 _cleanup_old_backups from tampered Backup records.
 """
 
-
 from backend.models.system import Backup
 from backend.services import backup_service
 from backend.services.backup_service import (

@@ -9,6 +9,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
 )
+
 from backend.models.base import Base, TimestampMixin
 
 
