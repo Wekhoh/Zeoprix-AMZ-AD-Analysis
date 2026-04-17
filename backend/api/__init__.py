@@ -43,4 +43,3 @@ api_router.include_router(benchmarks.router, prefix="/benchmarks", tags=["品类
 api_router.include_router(inventory.router, prefix="/inventory", tags=["库存管理"])
 api_router.include_router(keywords.router, tags=["关键词管理"])
 api_router.include_router(ad_types.router, prefix="/ad-types", tags=["广告类型目录"])
-api_router.include_router(ad_types.router, prefix="/ad-types", tags=["广告类型目录"])
