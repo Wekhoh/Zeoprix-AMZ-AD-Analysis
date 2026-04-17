@@ -70,6 +70,7 @@ export default function Placements() {
 	);
 
 	useEffect(() => {
+		// eslint-disable-next-line react-hooks/set-state-in-effect -- reset to page 1 + refetch on filter change; cannot be derived from props
 		setCurrentPage(1);
 		fetchData(1, pageSize);
 	}, [dateFrom, dateTo, campaignId, fetchData, pageSize]);

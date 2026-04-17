@@ -198,6 +198,7 @@ export default function Suggestions() {
 			.finally(() => setLoading(false));
 	}, [buildQueryString]);
 
+	// eslint-disable-next-line react-hooks/set-state-in-effect -- canonical data-fetch-on-filter-change; setState happens inside fetchData (async)
 	useEffect(fetchData, [dateFrom, dateTo, fetchData]);
 
 	const handleResolve = async (
