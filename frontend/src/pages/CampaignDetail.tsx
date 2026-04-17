@@ -850,7 +850,7 @@ export default function CampaignDetail() {
 
 			{/* Section B: KPI Cards */}
 			<Row gutter={16} style={{ marginBottom: 24 }}>
-				<Col span={6}>
+				<Col xs={24} sm={12} lg={6}>
 					<Card>
 						<Statistic
 							title="总花费"
@@ -862,7 +862,7 @@ export default function CampaignDetail() {
 						{wowDeltas && <WowIndicator delta={wowDeltas.spend} />}
 					</Card>
 				</Col>
-				<Col span={6}>
+				<Col xs={24} sm={12} lg={6}>
 					<Card>
 						<Statistic
 							title="总订单"
@@ -872,7 +872,7 @@ export default function CampaignDetail() {
 						{wowDeltas && <WowIndicator delta={wowDeltas.orders} />}
 					</Card>
 				</Col>
-				<Col span={6}>
+				<Col xs={24} sm={12} lg={6}>
 					<Card>
 						<Statistic
 							title="ROAS"
@@ -883,7 +883,7 @@ export default function CampaignDetail() {
 						{wowDeltas && <WowIndicator delta={wowDeltas.roas} />}
 					</Card>
 				</Col>
-				<Col span={6}>
+				<Col xs={24} sm={12} lg={6}>
 					<Card>
 						<Statistic
 							title="ACOS"
