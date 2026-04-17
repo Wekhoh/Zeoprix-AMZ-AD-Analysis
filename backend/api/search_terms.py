@@ -113,11 +113,21 @@ class KeywordActionCreate(BaseModel):
 
 
 @router.get("/actions")
-def list_keyword_actions(db: Session = Depends(get_db)):
-    """获取所有搜索词处理记录"""
-    records = db.query(KeywordAction).order_by(KeywordAction.created_at.desc()).limit(200).all()
-    return [
-        {
+def list_keyword_actions(
+    page: Optional[int] = Query(None, ge=1),
+    page_size: Optional[int] = Query(None, ge=1, le=500),
+    db: Session = Depends(get_db),
+):
+    """获取搜索词处理记录.
+
+    Backward-compatible pagination: if neither ``page`` nor ``page_size`` is
+    supplied, returns the most-recent 200 records as a flat list (legacy
+    shape). If either is supplied, returns ``{data, total, page, page_size}``
+    with default page_size=50.
+    """
+
+    def _row(r: KeywordAction) -> dict:
+        return {
             "id": r.id,
             "search_term": r.search_term,
             "from_campaign_id": r.from_campaign_id,
@@ -127,8 +137,23 @@ def list_keyword_actions(db: Session = Depends(get_db)):
             "notes": r.notes,
             "created_at": str(r.created_at) if r.created_at else None,
         }
-        for r in records
-    ]
+
+    q = db.query(KeywordAction).order_by(KeywordAction.created_at.desc())
+
+    paginated = page is not None or page_size is not None
+    if paginated:
+        _page = page or 1
+        _size = page_size or 50
+        total = q.count()
+        records = q.offset((_page - 1) * _size).limit(_size).all()
+        return {
+            "data": [_row(r) for r in records],
+            "total": total,
+            "page": _page,
+            "page_size": _size,
+        }
+    records = q.limit(200).all()
+    return [_row(r) for r in records]
 
 
 @router.post("/actions")
