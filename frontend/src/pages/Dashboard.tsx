@@ -475,7 +475,7 @@ export default function Dashboard() {
 								return null;
 						}
 						return (
-							<Col span={span} key={id}>
+							<Col xs={24} sm={12} lg={span} key={id}>
 								<SortableKpiCard id={id} index={index}>
 									{content}
 								</SortableKpiCard>
@@ -487,7 +487,7 @@ export default function Dashboard() {
 
 			{data.profit?.has_cost_data && (
 				<Row gutter={16} style={{ marginBottom: 24 }}>
-					<Col span={6}>
+					<Col xs={24} sm={12} lg={6}>
 						<Card>
 							<Statistic
 								title="预估利润"
@@ -504,7 +504,7 @@ export default function Dashboard() {
 							/>
 						</Card>
 					</Col>
-					<Col span={6}>
+					<Col xs={24} sm={12} lg={6}>
 						<Card>
 							<Statistic
 								title="盈亏平衡 ACOS"
@@ -628,7 +628,7 @@ export default function Dashboard() {
 				})()}
 
 			<Row gutter={16} style={{ marginBottom: 24 }}>
-				<Col span={16}>
+				<Col xs={24} lg={16}>
 					<Card title="每日趋势" style={{ height: "100%" }}>
 						<ReactECharts
 							option={withTheme(trendOption, isDark)}
@@ -636,7 +636,7 @@ export default function Dashboard() {
 						/>
 					</Card>
 				</Col>
-				<Col span={8}>
+				<Col xs={24} lg={8}>
 					<Card title="广告活动状态分布" style={{ height: "100%" }}>
 						<ReactECharts
 							option={{
@@ -691,7 +691,7 @@ export default function Dashboard() {
 			</Row>
 
 			<Row gutter={16} style={{ marginBottom: 24 }}>
-				<Col span={8}>
+				<Col xs={24} lg={8}>
 					<Card title="转化漏斗" style={{ height: "100%" }}>
 						{(() => {
 							const imp = data.kpi.impressions || 1;
@@ -762,7 +762,7 @@ export default function Dashboard() {
 						})()}
 					</Card>
 				</Col>
-				<Col span={16}>
+				<Col xs={24} lg={16}>
 					<Card title="TOP 花费广告活动" style={{ height: "100%" }}>
 						<Table<TopCampaign>
 							columns={topColumns}
@@ -796,7 +796,7 @@ export default function Dashboard() {
 									? `${(v * 100).toFixed(2)}%`
 									: `$${v.toFixed(2)}`;
 							return (
-								<Col span={6} key={item.metric}>
+								<Col xs={24} sm={12} md={12} lg={6} key={item.metric}>
 									<div style={{ marginBottom: 8 }}>
 										<strong>{item.metric}</strong>
 										<span
