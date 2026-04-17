@@ -124,6 +124,7 @@ export default function FilterToolbar({
 											danger
 											size="small"
 											icon={<DeleteOutlined />}
+											aria-label={`删除预设「${p.name}」`}
 											onClick={(e) => {
 												e.stopPropagation();
 												handleDelete(p.name);
@@ -165,6 +166,7 @@ export default function FilterToolbar({
 					size="small"
 					icon={<SaveOutlined />}
 					title="保存当前筛选为预设"
+					aria-label="保存当前筛选为预设"
 				/>
 			</Popover>
 		</Flex>
