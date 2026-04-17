@@ -115,7 +115,9 @@ export default function Campaigns() {
 			.catch(() => {});
 	}, []);
 
+	// eslint-disable-next-line react-hooks/set-state-in-effect -- canonical data-fetch-on-filter-change; setState happens inside fetchData (async)
 	useEffect(fetchData, [dateFrom, dateTo, marketplaceId, fetchData]);
+	// eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot tags load on mount
 	useEffect(fetchTags, [fetchTags]);
 
 	const filteredCampaigns = useMemo(() => {

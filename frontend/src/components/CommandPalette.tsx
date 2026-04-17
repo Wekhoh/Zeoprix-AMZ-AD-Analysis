@@ -165,12 +165,15 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
 	useEffect(() => {
 		if (open) {
+			// eslint-disable-next-line react-hooks/set-state-in-effect -- reset transient form state when modal opens; cannot be derived from props
 			setQuery("");
+			// eslint-disable-next-line react-hooks/set-state-in-effect -- reset transient selection index when modal opens
 			setSelectedIndex(0);
 		}
 	}, [open]);
 
 	useEffect(() => {
+		// eslint-disable-next-line react-hooks/set-state-in-effect -- reset selection cursor when query changes; index is only valid for current filtered list
 		setSelectedIndex(0);
 	}, [query]);
 

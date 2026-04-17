@@ -149,6 +149,7 @@ export default function Dashboard() {
 	// Show onboarding when no data and not dismissed (must be before any conditional return)
 	useEffect(() => {
 		if (!loading && isEmpty && !isOnboardingDismissed()) {
+			// eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot hint trigger; depends on async loading and localStorage check, cannot be derived
 			setShowOnboarding(true);
 		}
 	}, [loading, isEmpty]);
