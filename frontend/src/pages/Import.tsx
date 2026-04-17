@@ -311,7 +311,7 @@ export default function Import() {
 			/>
 
 			<Row gutter={24}>
-				<Col span={12}>
+				<Col xs={24} lg={12}>
 					<Card title="上传展示位置 CSV" style={{ marginBottom: 24 }}>
 						<Steps
 							current={csvStep}
@@ -453,7 +453,7 @@ export default function Import() {
 						)}
 					</Card>
 				</Col>
-				<Col span={12}>
+				<Col xs={24} lg={12}>
 					<Card title="上传操作日志 TXT" style={{ marginBottom: 16 }}>
 						<Upload.Dragger
 							multiple

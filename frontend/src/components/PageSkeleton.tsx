@@ -13,7 +13,7 @@ function DashboardSkeleton() {
 			{/* KPI cards row */}
 			<Row gutter={16} style={{ marginBottom: 24 }}>
 				{[1, 2, 3, 4].map((i) => (
-					<Col span={6} key={i}>
+					<Col xs={24} sm={12} lg={6} key={i}>
 						<Card>
 							<Skeleton
 								active
@@ -26,14 +26,14 @@ function DashboardSkeleton() {
 			</Row>
 			{/* Chart + sidebar */}
 			<Row gutter={16} style={{ marginBottom: 24 }}>
-				<Col span={16}>
+				<Col xs={24} lg={16}>
 					<Card>
 						<Skeleton.Node active style={{ width: "100%", height: 350 }}>
 							<span />
 						</Skeleton.Node>
 					</Card>
 				</Col>
-				<Col span={8}>
+				<Col xs={24} lg={8}>
 					<Card>
 						<Skeleton.Node active style={{ width: "100%", height: 350 }}>
 							<span />
@@ -43,12 +43,12 @@ function DashboardSkeleton() {
 			</Row>
 			{/* Bottom row */}
 			<Row gutter={16}>
-				<Col span={8}>
+				<Col xs={24} lg={8}>
 					<Card>
 						<Skeleton active paragraph={{ rows: 4 }} />
 					</Card>
 				</Col>
-				<Col span={16}>
+				<Col xs={24} lg={16}>
 					<Card>
 						<Skeleton active paragraph={{ rows: 4 }} />
 					</Card>
