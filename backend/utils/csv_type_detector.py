@@ -72,10 +72,14 @@ def detect_csv_type(content: str, filename: str | None = None) -> CsvType:
     if filename and filename.lower().endswith(".txt") and "操作日志" in filename:
         return "operation_log"
 
-    # Tokenize first header-ish line(s) — strip BOM and whitespace
-    first_lines = "\n".join(head.splitlines()[:5])
-    tokens = {tok.strip().strip("\ufeff") for tok in first_lines.replace("\t", ",").split(",")}
-    tokens.discard("")
+    # Tokenize first header-ish line(s) — strip BOM and whitespace.
+    # Split PER LINE first so newline-adjacent values don't merge into one token.
+    tokens: set[str] = set()
+    for line in head.splitlines()[:5]:
+        for tok in line.replace("\t", ",").split(","):
+            cleaned = tok.strip().strip("\ufeff")
+            if cleaned:
+                tokens.add(cleaned)
 
     # Order matters: check more specific before more generic.
     if tokens & _SEARCH_TERM_MARKERS:
