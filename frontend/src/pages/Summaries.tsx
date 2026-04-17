@@ -17,7 +17,6 @@ export default function Summaries() {
 		useFilterParams();
 
 	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- loading indicator for async fetch
 		setLoading(true);
 		const qs = buildQueryString();
 		Promise.all([
