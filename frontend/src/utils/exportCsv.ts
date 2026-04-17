@@ -12,7 +12,7 @@ interface ColumnDef {
 	) => string | number | null | undefined;
 }
 
-export function exportToCsv<T extends Record<string, unknown>>(
+export function exportToCsv<T extends object>(
 	data: T[],
 	columns: ColumnDef[],
 	filename: string,
@@ -29,7 +29,7 @@ export function exportToCsv<T extends Record<string, unknown>>(
 	const rows = data.map((record) =>
 		columns
 			.map((col) => {
-				const raw = record[col.dataIndex];
+				const raw = (record as Record<string, unknown>)[col.dataIndex];
 				// Format the value: use render if provided, otherwise raw value
 				const value = raw ?? "";
 				const str = String(value).replace(/"/g, '""');

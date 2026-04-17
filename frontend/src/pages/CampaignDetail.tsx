@@ -542,7 +542,7 @@ export default function CampaignDetail() {
 			key: "ad-groups",
 			label: `广告组 (${adGroups.length})`,
 			children: (
-				<Table
+				<Table<(typeof adGroups)[number]>
 					columns={[
 						{ title: "广告组", dataIndex: "name", key: "name", ellipsis: true },
 						{

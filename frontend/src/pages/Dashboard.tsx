@@ -543,19 +543,19 @@ export default function Dashboard() {
 						items: DashboardAlert[];
 					}[] = [
 						{
-							key: "danger",
+							key: "danger" as const,
 							title: "立即处理",
 							color: "#ff4d4f",
 							items: groups.danger,
 						},
 						{
-							key: "warning",
+							key: "warning" as const,
 							title: "今天处理",
 							color: "#faad14",
 							items: groups.warning,
 						},
 						{
-							key: "success",
+							key: "success" as const,
 							title: "扩量机会",
 							color: "#52c41a",
 							items: groups.success,
