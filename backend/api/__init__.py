@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from backend.api import (
+    ad_types,
     analysis,
     backups,
     benchmarks,
@@ -41,3 +42,5 @@ api_router.include_router(reports.router, prefix="/reports", tags=["报告导出
 api_router.include_router(benchmarks.router, prefix="/benchmarks", tags=["品类基准"])
 api_router.include_router(inventory.router, prefix="/inventory", tags=["库存管理"])
 api_router.include_router(keywords.router, tags=["关键词管理"])
+api_router.include_router(ad_types.router, prefix="/ad-types", tags=["广告类型目录"])
+api_router.include_router(ad_types.router, prefix="/ad-types", tags=["广告类型目录"])
