@@ -30,13 +30,7 @@ async def import_inventory_csv(
 
     for f in files:
         raw = await f.read()
-        content = ""
-        for enc in ["utf-8-sig", "utf-8", "gbk", "gb2312"]:
-            try:
-                content = raw.decode(enc)
-                break
-            except (UnicodeDecodeError, LookupError):
-                continue
+        content = decode_with_fallback(raw) or ""
 
         if not content:
             details.append({"file": f.filename, "error": "encoding"})
