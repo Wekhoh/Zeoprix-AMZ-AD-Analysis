@@ -73,6 +73,8 @@ def _run_migrations(connection):
         ("ix_placement_date", "placement_records", "date"),
         # Batch 15 perf: placement_type filter used in placements endpoint
         ("ix_placement_type", "placement_records", "placement_type"),
+        # Phase C6 perf: compound index for "filter by placement_type within a campaign"
+        ("ix_placement_type_campaign", "placement_records", "placement_type, campaign_id"),
         # Batch 15 perf: soft-delete filtering
         ("ix_notes_deleted_at", "notes", "deleted_at"),
         ("ix_organic_sales_deleted_at", "organic_sales", "deleted_at"),
