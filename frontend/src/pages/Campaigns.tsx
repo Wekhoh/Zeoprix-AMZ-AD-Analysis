@@ -24,7 +24,11 @@ import EmptyState from "../components/EmptyState";
 import FilterToolbar from "../components/FilterToolbar";
 import PageHelp from "../components/PageHelp";
 import PageSkeleton from "../components/PageSkeleton";
+import ColumnSettingsButton, {
+	type ColumnDescriptor,
+} from "../components/ColumnSettingsButton";
 import { useFilterParams } from "../hooks/useFilterParams";
+import { useColumnVisibility } from "../hooks/useColumnVisibility";
 import type { Campaign } from "../types/api";
 
 interface FilterPreset {
@@ -39,6 +43,20 @@ const AD_TYPE_COLOR: Record<string, string> = {
 	SD: "orange",
 	SBV: "cyan",
 };
+
+const CAMPAIGN_COLUMN_DESCRIPTORS: ColumnDescriptor[] = [
+	{ key: "name", label: "广告活动名称", required: true },
+	{ key: "ad_type", label: "类型" },
+	{ key: "status", label: "状态" },
+	{ key: "spend", label: "花费" },
+	{ key: "orders", label: "订单" },
+	{ key: "acos", label: "ACOS" },
+	{ key: "roas", label: "ROAS" },
+	{ key: "budget", label: "日预算" },
+	{ key: "bid", label: "出价" },
+	{ key: "tags", label: "标签" },
+];
+const CAMPAIGN_COLUMN_KEYS = CAMPAIGN_COLUMN_DESCRIPTORS.map((c) => c.key);
 
 const AD_TYPE_TABS = [
 	{ key: "all", label: "全部" },
@@ -63,6 +81,10 @@ export default function Campaigns() {
 	const [tagFilter, setTagFilter] = useState<string[]>([]);
 	const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
 	const [editingTags, setEditingTags] = useState<string[]>([]);
+	const [hiddenCols, toggleCol, resetCols] = useColumnVisibility(
+		"campaigns_hidden_cols",
+		CAMPAIGN_COLUMN_KEYS,
+	);
 	const [presets, setPresets] = useState<FilterPreset[]>(() => {
 		try {
 			const saved = localStorage.getItem("campaigns_filter_presets");
@@ -334,6 +356,12 @@ export default function Campaigns() {
 					style={{ marginBottom: 0, flex: 1 }}
 				/>
 				<FilterToolbar showCampaignFilter={false} />
+				<ColumnSettingsButton
+					columns={CAMPAIGN_COLUMN_DESCRIPTORS}
+					hiddenKeys={hiddenCols}
+					onToggle={toggleCol}
+					onReset={resetCols}
+				/>
 				<PageHelp
 					title="广告活动帮助"
 					content="显示所有已导入的广告活动及其绩效指标。点击活动名称查看详情。ACOS 红色表示 >50%，绿色表示 <25%。ROAS 绿色表示 >3。点击标签列编辑标签。"
@@ -420,7 +448,7 @@ export default function Campaigns() {
 				/>
 			</Modal>
 			<Table
-				columns={columns}
+				columns={columns.filter((c) => !hiddenCols.has(c.key))}
 				dataSource={filteredCampaigns}
 				rowKey="id"
 				size="middle"
