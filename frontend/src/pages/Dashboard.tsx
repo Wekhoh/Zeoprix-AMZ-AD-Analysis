@@ -65,7 +65,6 @@ function SortableKpiCard({
 	);
 }
 import type {
-	DailyTrend,
 	DashboardAlert,
 	DashboardData,
 	TopCampaign,
