@@ -108,10 +108,6 @@ const lightComponents = {
 	Tag: {
 		defaultBg: "rgba(0,0,0,0.04)",
 	},
-	Statistic: {
-		titleColor: "#6B7280",
-		contentColor: "#1F2937",
-	},
 };
 
 const darkComponents = {
@@ -171,10 +167,6 @@ const darkComponents = {
 	},
 	Tag: {
 		defaultBg: "rgba(255,255,255,0.06)",
-	},
-	Statistic: {
-		titleColor: "#9CA3AF",
-		contentColor: "#F3F4F6",
 	},
 };
 

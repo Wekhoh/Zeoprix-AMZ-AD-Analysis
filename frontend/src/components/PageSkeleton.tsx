@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { Card, Col, Row, Skeleton } from "antd";
 
 type Variant = "dashboard" | "table" | "cards";
@@ -94,7 +95,7 @@ function CardsSkeleton() {
 	);
 }
 
-const VARIANT_MAP: Record<Variant, () => JSX.Element> = {
+const VARIANT_MAP: Record<Variant, () => ReactElement> = {
 	dashboard: DashboardSkeleton,
 	table: TableSkeleton,
 	cards: CardsSkeleton,
