@@ -33,19 +33,22 @@ A professional-grade, local-first web application for tracking and analyzing Ama
 
 ### Professional UX
 - **Dark / Light / System theme** — Smooth transitions, persistent preference
-- **Ctrl+K command palette** — Quick navigation and actions
+- **Ctrl+K command palette** — Quick navigation and actions, also opens with `/`
 - **Collapsible sidebar** — Icon mode for more screen space
 - **Breadcrumb navigation** — Full path tracking across all pages
 - **Page-level help** — Contextual guidance on every page
 - **First-use onboarding** — 4-step guided setup for new users
 - **Error boundary** — Graceful error handling, no white screens
 - **Server-side pagination** — Efficient loading for large datasets
+- **Drag-to-reorder Dashboard KPIs** — Reorder primary KPI cards, order persists in localStorage
+- **Column visibility** — Show/hide table columns on Campaigns / Placements / Operation Logs, persisted per-table
+- **Filter presets** — Save/load filter combinations via named presets on Campaigns
 
 ### Engineering
-- **34 automated tests** — CSV parser, KPI calculator, date parser, import API
+- **196 automated tests** — Models, services (KPI calculator, CSV parser, backup, rule engine, clear-data), API, import flows
 - **Structured logging** — Rotating file logs with request ID tracing
 - **15 database indexes** — Optimized query performance at scale
-- **Backup system** — Auto pre-import backup, integrity verification, one-click restore
+- **Backup system** — Auto pre-import backup, integrity verification, one-click restore, pre_clear safety net
 - **Docker ready** — Multi-stage Dockerfile + docker-compose.yml
 
 ---
@@ -57,7 +60,7 @@ A professional-grade, local-first web application for tracking and analyzing Ama
 | Backend | FastAPI + SQLAlchemy + SQLite (WAL mode) |
 | Frontend | React 19 + TypeScript + Ant Design 6 + ECharts |
 | Build | Vite 8 |
-| Testing | pytest (34 tests) |
+| Testing | pytest (196 tests) |
 | Container | Docker + docker-compose |
 
 ---
@@ -99,17 +102,17 @@ docker compose up
 ```
 amz-ad-tracker/
 ├── backend/
-│   ├── api/            # 15 route modules (45+ endpoints)
+│   ├── api/            # 18 route modules (45+ endpoints)
 │   ├── models/         # 14 SQLAlchemy models (16 tables)
 │   ├── services/       # 15 business logic services
 │   ├── schemas/        # Pydantic validation models
 │   └── utils/          # Amazon rules, parsers
 ├── frontend/src/
 │   ├── pages/          # 12 page components
-│   ├── components/     # 9 shared components
-│   ├── hooks/          # 3 custom hooks
+│   ├── components/     # 12 shared components
+│   ├── hooks/          # 5 custom hooks (filters, theme, marketplace, card order, column visibility)
 │   └── utils/          # Chart theme, CSV export
-├── tests/              # 34 pytest tests
+├── tests/              # 196 pytest tests
 ├── Dockerfile
 └── docker-compose.yml
 ```
@@ -142,7 +145,7 @@ python -m pytest tests/ -v
 ```
 
 ```
-34 passed in 0.15s
+196 passed in ~3s
 ```
 
 ---
