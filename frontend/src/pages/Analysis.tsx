@@ -19,7 +19,8 @@ import {
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import "dayjs/locale/zh-cn";
-import ReactECharts from "echarts-for-react";
+import ReactECharts from "echarts-for-react/lib/core";
+import echarts from "../utils/echartsCore";
 import api from "../api/client";
 import { withTheme, CHART_COLORS } from "../utils/chartTheme";
 import { useTheme } from "../hooks/useTheme";
@@ -497,6 +498,7 @@ export default function Analysis() {
 									<>
 										<Card title="趋势图" style={{ marginBottom: 24 }}>
 											<ReactECharts
+												echarts={echarts}
 												option={withTheme(
 													{
 														tooltip: { trigger: "axis" as const },
