@@ -9,6 +9,20 @@ from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
 from backend.logging_config import get_logger
+from backend.models import (
+    AdGroup,
+    ImportHistory,
+    OperationLog,
+)
+from backend.schemas.import_result import ImportDetail, ImportResult
+from backend.services.campaign_upsert import (
+    get_or_create_campaign,
+    upsert_campaign_daily_record,
+    upsert_placement_record,
+)
+from backend.services.csv_parser import parse_csv_placement_data
+from backend.services.log_parser import parse_operation_log_content
+from backend.utils.encoding_helper import decode_with_fallback
 
 logger = get_logger("import")
 
@@ -16,156 +30,6 @@ MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50MB — byte-level DoS guard
 # Row-level DoS guard: even a well-formed CSV can OOM the parser if it's
 # 10M rows. Amazon reports are typically < 10K rows; 100K is generous.
 MAX_CSV_ROWS = 100_000
-
-from backend.models import (
-    AdGroup,
-    Campaign,
-    CampaignDailyRecord,
-    ImportHistory,
-    Marketplace,
-    OperationLog,
-    PlacementRecord,
-)
-from backend.schemas.import_result import ImportDetail, ImportResult
-from backend.services.csv_parser import parse_csv_placement_data
-from backend.services.log_parser import parse_operation_log_content
-from backend.utils.campaign_parser import (
-    extract_bidding_strategy_type,
-    extract_default_bid,
-    get_portfolio_name,
-)
-from backend.utils.encoding_helper import decode_with_fallback
-
-
-def _get_or_create_campaign(
-    db: Session, campaign_name: str, bidding_strategy: str = ""
-) -> Campaign:
-    """获取或创建广告活动记录"""
-    # 获取默认站点
-    marketplace = db.query(Marketplace).filter_by(code="US").first()
-    if not marketplace:
-        marketplace = Marketplace(code="US", name="美国站", currency="USD")
-        db.add(marketplace)
-        db.flush()
-
-    campaign = (
-        db.query(Campaign).filter_by(name=campaign_name, marketplace_id=marketplace.id).first()
-    )
-    if campaign:
-        return campaign
-
-    # 创建新广告活动
-    strategy = bidding_strategy or extract_bidding_strategy_type(campaign_name)
-    campaign = Campaign(
-        name=campaign_name,
-        marketplace_id=marketplace.id,
-        ad_type="SP",
-        targeting_type="auto",
-        match_type="close",
-        bidding_strategy=strategy,
-        base_bid=extract_default_bid(campaign_name),
-        portfolio=get_portfolio_name(campaign_name),
-    )
-    db.add(campaign)
-    db.flush()
-
-    # 同时创建 1:1 广告组
-    ad_group = AdGroup(
-        campaign_id=campaign.id,
-        name=campaign_name,
-        default_bid=extract_default_bid(campaign_name),
-    )
-    db.add(ad_group)
-    db.flush()
-
-    return campaign
-
-
-def _upsert_placement(db: Session, campaign_id: int, data: dict) -> str:
-    """插入或更新展示位置记录。返回 'imported' / 'updated' / 'skipped'"""
-    existing = (
-        db.query(PlacementRecord)
-        .filter_by(
-            date=data["date"],
-            campaign_id=campaign_id,
-            placement_type=data["placement"],
-        )
-        .first()
-    )
-
-    if existing:
-        # 比对 5 个核心字段
-        changed = False
-        for field, db_field in [
-            ("impressions", "impressions"),
-            ("clicks", "clicks"),
-            ("spend", "spend"),
-            ("orders", "orders"),
-            ("sales", "sales"),
-        ]:
-            old_val = getattr(existing, db_field)
-            new_val = data[field]
-            if isinstance(new_val, float):
-                if abs((old_val or 0) - new_val) > 0.01:
-                    setattr(existing, db_field, new_val)
-                    changed = True
-            elif old_val != new_val:
-                setattr(existing, db_field, new_val)
-                changed = True
-
-        return "updated" if changed else "skipped"
-
-    record = PlacementRecord(
-        date=data["date"],
-        campaign_id=campaign_id,
-        placement_type=data["placement"],
-        bidding_strategy=data.get("bidding_strategy"),
-        impressions=data["impressions"],
-        clicks=data["clicks"],
-        spend=data["spend"],
-        orders=data["orders"],
-        sales=data["sales"],
-    )
-    db.add(record)
-    return "imported"
-
-
-def _upsert_campaign_daily(db: Session, campaign_id: int, data: dict) -> str:
-    """插入或更新广告活动日数据"""
-    existing = (
-        db.query(CampaignDailyRecord)
-        .filter_by(
-            date=data["date"],
-            campaign_id=campaign_id,
-        )
-        .first()
-    )
-
-    if existing:
-        changed = False
-        for field in ["impressions", "clicks", "spend", "orders", "sales"]:
-            old_val = getattr(existing, field)
-            new_val = data[field]
-            if isinstance(new_val, float):
-                if abs((old_val or 0) - new_val) > 0.01:
-                    setattr(existing, field, new_val)
-                    changed = True
-            elif old_val != new_val:
-                setattr(existing, field, new_val)
-                changed = True
-        return "updated" if changed else "skipped"
-
-    record = CampaignDailyRecord(
-        date=data["date"],
-        campaign_id=campaign_id,
-        impressions=data["impressions"],
-        clicks=data["clicks"],
-        spend=data["spend"],
-        orders=data["orders"],
-        sales=data["sales"],
-    )
-    db.add(record)
-    return "imported"
 
 
 async def process_placement_csv_upload(db: Session, files: list[UploadFile]) -> ImportResult:
@@ -214,7 +78,7 @@ async def process_placement_csv_upload(db: Session, files: list[UploadFile]) -> 
             )
 
             campaign_name = campaign_summary["campaign_name"]
-            campaign = _get_or_create_campaign(
+            campaign = get_or_create_campaign(
                 db, campaign_name, campaign_summary.get("bidding_strategy", "")
             )
 
@@ -223,7 +87,7 @@ async def process_placement_csv_upload(db: Session, files: list[UploadFile]) -> 
             file_skipped = 0
 
             for data in placement_data:
-                result = _upsert_placement(db, campaign.id, data)
+                result = upsert_placement_record(db, campaign.id, data)
                 if result == "imported":
                     file_imported += 1
                 elif result == "updated":
@@ -232,7 +96,7 @@ async def process_placement_csv_upload(db: Session, files: list[UploadFile]) -> 
                     file_skipped += 1
 
             # 同时更新广告活动日汇总
-            daily_result = _upsert_campaign_daily(db, campaign.id, campaign_summary)
+            upsert_campaign_daily_record(db, campaign.id, campaign_summary)
 
             db.commit()
 
@@ -584,7 +448,7 @@ async def process_operation_log_upload(db: Session, files: list[UploadFile]) -> 
             existing_keys: Counter = Counter()
             for entry in log_entries:
                 campaign_name = entry["campaign_name"]
-                campaign = _get_or_create_campaign(db, campaign_name)
+                campaign = get_or_create_campaign(db, campaign_name)
 
                 key = f"{entry['date']}|{entry['time']}|{campaign.id}|{entry['change_type']}|{entry['from_value']}|{entry['to_value']}"
                 existing_keys[key] += 1
