@@ -12,6 +12,28 @@ interface ColumnDef {
 	) => string | number | null | undefined;
 }
 
+// Characters that trigger formula interpretation in Excel / LibreOffice /
+// Google Sheets. Mirrors backend/services/formatters.py:_FORMULA_TRIGGERS.
+const FORMULA_TRIGGERS = new Set(["=", "+", "-", "@", "\t", "\r", "\x00"]);
+
+/**
+ * Guard against Excel/CSV formula injection. Strings whose first char is a
+ * formula trigger get a leading single quote — spreadsheet apps strip it on
+ * display but no longer parse the cell as a formula.
+ *
+ * Protects against malicious values (e.g. a campaign name starting with
+ * `=cmd|'/c calc'!A1`) that can flow from Amazon seller central → CSV import
+ * → exported CSV → user's Excel, executing code on open.
+ */
+export function safeCsvCell(value: unknown): string {
+	if (value === null || value === undefined) return "";
+	const str = String(value);
+	if (str.length > 0 && FORMULA_TRIGGERS.has(str[0])) {
+		return "'" + str;
+	}
+	return str;
+}
+
 export function exportToCsv<T extends object>(
 	data: T[],
 	columns: ColumnDef[],
@@ -22,18 +44,20 @@ export function exportToCsv<T extends object>(
 	// BOM for Excel to recognize UTF-8
 	const BOM = "\uFEFF";
 
-	// Header row
-	const header = columns.map((col) => `"${col.title}"`).join(",");
+	// Header row — titles are developer-controlled but safe-cell them for
+	// defense in depth (costs nothing, covers future reuse).
+	const header = columns
+		.map((col) => `"${safeCsvCell(col.title).replace(/"/g, '""')}"`)
+		.join(",");
 
 	// Data rows
 	const rows = data.map((record) =>
 		columns
 			.map((col) => {
 				const raw = (record as Record<string, unknown>)[col.dataIndex];
-				// Format the value: use render if provided, otherwise raw value
-				const value = raw ?? "";
-				const str = String(value).replace(/"/g, '""');
-				return `"${str}"`;
+				const safe = safeCsvCell(raw);
+				const escaped = safe.replace(/"/g, '""');
+				return `"${escaped}"`;
 			})
 			.join(","),
 	);
