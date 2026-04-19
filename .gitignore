@@ -16,6 +16,8 @@ __pycache__/
 .pytest_cache/
 htmlcov/
 *.egg-info/
+.coverage
+coverage.json
 
 # Node
 node_modules/
