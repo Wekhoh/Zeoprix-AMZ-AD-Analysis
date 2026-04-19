@@ -26,7 +26,8 @@ import {
 	EditOutlined,
 	DeleteOutlined,
 } from "@ant-design/icons";
-import ReactECharts from "echarts-for-react";
+import ReactECharts from "echarts-for-react/lib/core";
+import echarts from "../utils/echartsCore";
 import { withTheme } from "../utils/chartTheme";
 import { fmtPct, fmtUsd } from "../utils/formatters";
 import { calcWowDeltas, WowIndicator } from "../utils/wowDeltas";
@@ -901,6 +902,7 @@ export default function CampaignDetail() {
 			<Card title="每日趋势" style={{ marginBottom: 24 }}>
 				{trends.length > 0 ? (
 					<ReactECharts
+						echarts={echarts}
 						option={withTheme(trendOption, isDark)}
 						style={{ height: 350 }}
 					/>
