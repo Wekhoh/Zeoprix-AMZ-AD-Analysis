@@ -21,10 +21,11 @@ import {
 	AimOutlined,
 	PieChartOutlined,
 } from "@ant-design/icons";
-import ReactECharts from "echarts-for-react";
+import ReactECharts from "echarts-for-react/lib/core";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { move } from "@dnd-kit/helpers";
+import echarts from "../utils/echartsCore";
 import { withTheme, CHART_COLORS } from "../utils/chartTheme";
 import api from "../api/client";
 import FilterToolbar from "../components/FilterToolbar";
@@ -631,6 +632,7 @@ export default function Dashboard() {
 				<Col xs={24} lg={16}>
 					<Card title="每日趋势" style={{ height: "100%" }}>
 						<ReactECharts
+							echarts={echarts}
 							option={withTheme(trendOption, isDark)}
 							style={{ height: 350 }}
 						/>
@@ -639,6 +641,7 @@ export default function Dashboard() {
 				<Col xs={24} lg={8}>
 					<Card title="广告活动状态分布" style={{ height: "100%" }}>
 						<ReactECharts
+							echarts={echarts}
 							option={{
 								tooltip: {
 									trigger: "item",
@@ -713,6 +716,7 @@ export default function Dashboard() {
 							];
 							return (
 								<ReactECharts
+									echarts={echarts}
 									option={{
 										tooltip: {
 											trigger: "item",
