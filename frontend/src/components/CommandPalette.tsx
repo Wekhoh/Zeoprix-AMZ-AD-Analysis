@@ -18,7 +18,9 @@ import {
 	PlusOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
+import { useFilterParams } from "../hooks/useFilterParams";
 import { useTheme } from "../hooks/useTheme";
+import { BulbFilled, ClearOutlined } from "@ant-design/icons";
 import type { ReactNode } from "react";
 
 interface CommandItem {
@@ -37,7 +39,8 @@ interface CommandPaletteProps {
 
 export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
 	const navigate = useNavigate();
-	const { isDark } = useTheme();
+	const { isDark, setMode } = useTheme();
+	const { clearFilters } = useFilterParams();
 	const [query, setQuery] = useState("");
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const inputRef = useRef<InputRef>(null);
@@ -151,8 +154,28 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
 				type: "action",
 				action: () => handleNavigate("/rules"),
 			},
+			{
+				key: "action-toggle-theme",
+				label: isDark ? "切换到浅色主题" : "切换到暗色主题",
+				icon: <BulbFilled />,
+				type: "action",
+				action: () => {
+					setMode(isDark ? "light" : "dark");
+					onClose();
+				},
+			},
+			{
+				key: "action-clear-filters",
+				label: "清空全局筛选器",
+				icon: <ClearOutlined />,
+				type: "action",
+				action: () => {
+					clearFilters();
+					onClose();
+				},
+			},
 		],
-		[handleNavigate],
+		[handleNavigate, isDark, setMode, clearFilters, onClose],
 	);
 
 	const filtered = useMemo(() => {
