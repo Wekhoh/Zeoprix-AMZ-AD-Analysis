@@ -1,31 +1,14 @@
 import { useEffect, useState } from "react";
+import { Button, Card, Input, Modal, Tabs, message } from "antd";
 import {
-	Tabs,
-	Card,
-	Button,
-	Table,
-	message,
-	Popconfirm,
-	Space,
-	Tag,
-	InputNumber,
-	Modal,
-	DatePicker,
-	Input,
-	Select,
-} from "antd";
-import {
-	CheckCircleOutlined,
 	ClearOutlined,
-	DeleteOutlined,
 	DatabaseOutlined,
-	ExclamationCircleOutlined,
-	ShopOutlined,
+	DeleteOutlined,
 	DollarOutlined,
-	PlusOutlined,
+	ExclamationCircleOutlined,
 	HistoryOutlined,
+	ShopOutlined,
 } from "@ant-design/icons";
-import dayjs from "dayjs";
 import api from "../api/client";
 import PageHelp from "../components/PageHelp";
 import PageSkeleton from "../components/PageSkeleton";
@@ -35,26 +18,11 @@ import SettingsBackupTab, {
 import SettingsImportHistoryTab, {
 	type ImportHistoryItem,
 } from "../components/SettingsImportHistoryTab";
+import SettingsProductsTab, {
+	type ProductItem,
+} from "../components/SettingsProductsTab";
+import SettingsOrganicSalesTab from "../components/SettingsOrganicSalesTab";
 import type { OrganicSalesRecord, BenchmarkCategory } from "../types/api";
-
-interface VariantItem {
-	id: number;
-	variant_code: string;
-	variant_name: string;
-	asin: string | null;
-	unit_cost: number | null;
-	fba_fee: number | null;
-	referral_fee_pct: number | null;
-}
-
-interface ProductItem {
-	id: number;
-	sku: string;
-	name: string;
-	category: string;
-	category_key: string | null;
-	variants: VariantItem[];
-}
 
 export default function Settings() {
 	const [backups, setBackups] = useState<BackupItem[]>([]);
@@ -63,13 +31,6 @@ export default function Settings() {
 	const [categories, setCategories] = useState<BenchmarkCategory[]>([]);
 	const [importHistory, setImportHistory] = useState<ImportHistoryItem[]>([]);
 	const [loading, setLoading] = useState(true);
-	const [salesModalOpen, setSalesModalOpen] = useState(false);
-	const [salesForm, setSalesForm] = useState({
-		date: "",
-		total_sales: 0,
-		total_orders: 0,
-		notes: "",
-	});
 	const [dataStats, setDataStats] = useState<Record<string, number>>({});
 	const [clearConfirmText, setClearConfirmText] = useState("");
 	const [clearModalOpen, setClearModalOpen] = useState(false);
@@ -121,236 +82,6 @@ export default function Settings() {
 		}
 	};
 
-	const handleUpdateVariantCost = async (
-		variantId: number,
-		field: string,
-		value: string | number | null,
-	) => {
-		try {
-			await api.put(`/settings/products/${variantId}`, { [field]: value });
-			message.success("已保存");
-			fetchData();
-		} catch {
-			message.error("保存失败");
-		}
-	};
-
-	const handleAddOrganicSales = async () => {
-		if (!salesForm.date) {
-			message.warning("请选择日期");
-			return;
-		}
-		try {
-			await api.post("/settings/organic-sales", [salesForm]);
-			message.success("销售数据已保存");
-			setSalesModalOpen(false);
-			setSalesForm({ date: "", total_sales: 0, total_orders: 0, notes: "" });
-			fetchData();
-		} catch {
-			message.error("保存失败");
-		}
-	};
-
-	const handleDeleteOrganicSales = async (id: number) => {
-		await api.delete(`/settings/organic-sales/${id}`);
-		message.success("记录已删除");
-		fetchData();
-	};
-
-	const handleUpdateCategoryKey = async (
-		productId: number,
-		categoryKey: string | null,
-	) => {
-		try {
-			await api.put(`/settings/products/${productId}/category-key`, {
-				category_key: categoryKey,
-			});
-			message.success("品类已更新");
-			fetchData();
-		} catch {
-			message.error("更新失败");
-		}
-	};
-
-	const variantColumns = [
-		{
-			title: "变体代码",
-			dataIndex: "variant_code",
-			key: "code",
-			width: 120,
-			render: (v: string, record: VariantItem) => (
-				<Input
-					defaultValue={v}
-					size="small"
-					style={{ width: 100 }}
-					onBlur={(e) => {
-						if (e.target.value !== v) {
-							handleUpdateVariantCost(
-								record.id,
-								"variant_code",
-								e.target.value,
-							);
-						}
-					}}
-					onPressEnter={(e) => (e.target as HTMLInputElement).blur()}
-				/>
-			),
-		},
-		{
-			title: "变体名称",
-			dataIndex: "variant_name",
-			key: "name",
-			render: (v: string, record: VariantItem) => (
-				<Input
-					defaultValue={v}
-					size="small"
-					style={{ width: 120 }}
-					onBlur={(e) => {
-						if (e.target.value !== v) {
-							handleUpdateVariantCost(
-								record.id,
-								"variant_name",
-								e.target.value,
-							);
-						}
-					}}
-					onPressEnter={(e) => (e.target as HTMLInputElement).blur()}
-				/>
-			),
-		},
-		{
-			title: "ASIN",
-			dataIndex: "asin",
-			key: "asin",
-			width: 140,
-			render: (v: string | null, record: VariantItem) => (
-				<Input
-					defaultValue={v || ""}
-					size="small"
-					style={{ width: 130 }}
-					placeholder="B0XXXXXXXX"
-					onBlur={(e) => {
-						const newVal = e.target.value || null;
-						if (newVal !== v) {
-							handleUpdateVariantCost(record.id, "asin", newVal);
-						}
-					}}
-					onPressEnter={(e) => (e.target as HTMLInputElement).blur()}
-				/>
-			),
-		},
-		{
-			title: "产品成本 ($)",
-			dataIndex: "unit_cost",
-			key: "unit_cost",
-			width: 130,
-			render: (v: number | null, record: VariantItem) => (
-				<InputNumber
-					value={v}
-					min={0}
-					step={0.01}
-					precision={2}
-					size="small"
-					style={{ width: 110 }}
-					placeholder="0.00"
-					onBlur={(e) => {
-						const newVal = e.target.value ? parseFloat(e.target.value) : null;
-						if (newVal !== v) {
-							handleUpdateVariantCost(record.id, "unit_cost", newVal);
-						}
-					}}
-				/>
-			),
-		},
-		{
-			title: "FBA 费用 ($)",
-			dataIndex: "fba_fee",
-			key: "fba_fee",
-			width: 130,
-			render: (v: number | null, record: VariantItem) => (
-				<InputNumber
-					value={v}
-					min={0}
-					step={0.01}
-					precision={2}
-					size="small"
-					style={{ width: 110 }}
-					placeholder="0.00"
-					onBlur={(e) => {
-						const newVal = e.target.value ? parseFloat(e.target.value) : null;
-						if (newVal !== v) {
-							handleUpdateVariantCost(record.id, "fba_fee", newVal);
-						}
-					}}
-				/>
-			),
-		},
-		{
-			title: "佣金比例",
-			dataIndex: "referral_fee_pct",
-			key: "referral_fee_pct",
-			width: 130,
-			render: (v: number | null, record: VariantItem) => (
-				<InputNumber
-					value={v != null ? v * 100 : null}
-					min={0}
-					max={100}
-					step={0.5}
-					precision={1}
-					size="small"
-					style={{ width: 110 }}
-					placeholder="15.0"
-					suffix="%"
-					onBlur={(e) => {
-						const raw = e.target.value
-							? parseFloat(e.target.value) / 100
-							: null;
-						const current = v;
-						if (raw !== current) {
-							handleUpdateVariantCost(record.id, "referral_fee_pct", raw);
-						}
-					}}
-				/>
-			),
-		},
-	];
-
-	const organicSalesColumns = [
-		{ title: "日期", dataIndex: "date", key: "date", width: 120 },
-		{
-			title: "总销售额 ($)",
-			dataIndex: "total_sales",
-			key: "total_sales",
-			render: (v: number) => `$${v?.toFixed(2)}`,
-		},
-		{ title: "总订单数", dataIndex: "total_orders", key: "total_orders" },
-		{
-			title: "备注",
-			dataIndex: "notes",
-			key: "notes",
-			render: (v: string | null) => v || "-",
-		},
-		{
-			title: "操作",
-			key: "action",
-			width: 80,
-			render: (_: unknown, record: OrganicSalesRecord) => (
-				<Popconfirm
-					title="确定删除此记录？"
-					onConfirm={() => handleDeleteOrganicSales(record.id)}
-				>
-					<Button
-						type="text"
-						danger
-						icon={<DeleteOutlined />}
-						size="small"
-						aria-label="删除"
-					/>
-				</Popconfirm>
-			),
-		},
-	];
-
 	const tabs = [
 		{
 			key: "backup",
@@ -369,82 +100,11 @@ export default function Settings() {
 				</span>
 			),
 			children: (
-				<div>
-					{products.map((p) => (
-						<Card
-							key={p.id}
-							title={`${p.sku} - ${p.name}`}
-							size="small"
-							style={{ marginBottom: 16 }}
-							extra={
-								<Space>
-									<Select
-										placeholder="选择品类基准"
-										allowClear
-										style={{ width: 160 }}
-										value={p.category_key ?? undefined}
-										onChange={(val: string | undefined) =>
-											handleUpdateCategoryKey(p.id, val ?? null)
-										}
-										options={categories.map((c) => ({
-											value: c.key,
-											label: c.label,
-										}))}
-									/>
-									<Tag>{p.category}</Tag>
-								</Space>
-							}
-						>
-							<Table
-								columns={variantColumns}
-								dataSource={p.variants}
-								rowKey="id"
-								size="small"
-								pagination={false}
-							/>
-						</Card>
-					))}
-					<Card title="广告资格检查清单" size="small" style={{ marginTop: 24 }}>
-						{[
-							{
-								item: "专业卖家账户",
-								description: "必须是 Professional Seller 账户",
-							},
-							{ item: "账户信誉良好", description: "无严重违规或欠款" },
-							{
-								item: "Buy Box 资格",
-								description: "受定价、库存、配送速度、客户评价影响",
-							},
-							{ item: "商品有库存", description: "FBA 或 FBM 库存 > 0" },
-							{
-								item: "Listing 标题合规",
-								description: "<= 200 字符，无特殊字符堆砌",
-							},
-							{ item: "无违规标记", description: "商品未被限制或下架" },
-						].map((rule) => (
-							<div
-								key={rule.item}
-								style={{
-									display: "flex",
-									alignItems: "flex-start",
-									gap: 8,
-									padding: "8px 0",
-									borderBottom: "1px solid rgba(128,128,128,0.15)",
-								}}
-							>
-								<CheckCircleOutlined
-									style={{ color: "#52c41a", marginTop: 3 }}
-								/>
-								<div>
-									<div style={{ fontWeight: 500 }}>{rule.item}</div>
-									<div style={{ fontSize: 12, opacity: 0.7 }}>
-										{rule.description}
-									</div>
-								</div>
-							</div>
-						))}
-					</Card>
-				</div>
+				<SettingsProductsTab
+					products={products}
+					categories={categories}
+					onRefresh={fetchData}
+				/>
 			),
 		},
 		{
@@ -455,93 +115,7 @@ export default function Settings() {
 				</span>
 			),
 			children: (
-				<div>
-					<Space style={{ marginBottom: 16 }}>
-						<Button
-							type="primary"
-							icon={<PlusOutlined />}
-							onClick={() => setSalesModalOpen(true)}
-						>
-							添加
-						</Button>
-					</Space>
-					<Table
-						columns={organicSalesColumns}
-						dataSource={organicSales}
-						rowKey="id"
-						size="small"
-						pagination={{ pageSize: 20 }}
-						locale={{ emptyText: "暂无销售数据，用于计算 TACoS" }}
-					/>
-					<Modal
-						title="添加销售数据"
-						open={salesModalOpen}
-						onOk={handleAddOrganicSales}
-						onCancel={() => setSalesModalOpen(false)}
-						okText="保存"
-						cancelText="取消"
-					>
-						<div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-							<div>
-								<div style={{ marginBottom: 4 }}>日期</div>
-								<DatePicker
-									style={{ width: "100%" }}
-									onChange={(d) =>
-										setSalesForm((prev) => ({
-											...prev,
-											date: d ? d.format("YYYY-MM-DD") : "",
-										}))
-									}
-									value={salesForm.date ? dayjs(salesForm.date) : null}
-								/>
-							</div>
-							<div>
-								<div style={{ marginBottom: 4 }}>总销售额 ($)</div>
-								<InputNumber
-									style={{ width: "100%" }}
-									min={0}
-									step={0.01}
-									precision={2}
-									value={salesForm.total_sales}
-									onChange={(v) =>
-										setSalesForm((prev) => ({
-											...prev,
-											total_sales: v ?? 0,
-										}))
-									}
-								/>
-							</div>
-							<div>
-								<div style={{ marginBottom: 4 }}>总订单数</div>
-								<InputNumber
-									style={{ width: "100%" }}
-									min={0}
-									step={1}
-									precision={0}
-									value={salesForm.total_orders}
-									onChange={(v) =>
-										setSalesForm((prev) => ({
-											...prev,
-											total_orders: v ?? 0,
-										}))
-									}
-								/>
-							</div>
-							<div>
-								<div style={{ marginBottom: 4 }}>备注</div>
-								<Input
-									value={salesForm.notes}
-									onChange={(e) =>
-										setSalesForm((prev) => ({
-											...prev,
-											notes: e.target.value,
-										}))
-									}
-								/>
-							</div>
-						</div>
-					</Modal>
-				</div>
+				<SettingsOrganicSalesTab sales={organicSales} onRefresh={fetchData} />
 			),
 		},
 		{
