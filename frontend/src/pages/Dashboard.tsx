@@ -33,6 +33,7 @@ import EmptyState from "../components/EmptyState";
 import PageHelp from "../components/PageHelp";
 import OnboardingGuide from "../components/OnboardingGuide";
 import { isOnboardingDismissed } from "../utils/onboarding";
+import { useFetchData } from "../hooks/useFetchData";
 import { useFilterParams } from "../hooks/useFilterParams";
 import { useTheme } from "../hooks/useTheme";
 import { useCardOrder } from "../hooks/useCardOrder";
@@ -72,16 +73,22 @@ import type {
 } from "../types/api";
 
 export default function Dashboard() {
-	const [data, setData] = useState<DashboardData | null>(null);
 	const [benchmarkData, setBenchmarkData] = useState<BenchmarkResult | null>(
 		null,
 	);
-	const [loading, setLoading] = useState(true);
 	const [showOnboarding, setShowOnboarding] = useState(false);
 	const { dateFrom, dateTo, marketplaceId, buildQueryString } =
 		useFilterParams();
 	const { isDark } = useTheme();
 	const navigate = useNavigate();
+
+	const { data, loading } = useFetchData<DashboardData>(
+		() =>
+			api
+				.get<DashboardData>(`/summaries/dashboard${buildQueryString()}`)
+				.then((r) => r.data),
+		[dateFrom, dateTo, marketplaceId, buildQueryString],
+	);
 
 	// B6 (a): persistent KPI card order. TACoS only appears when cost data exists,
 	// so the default list depends on `data` — useCardOrder reconciles stored order
@@ -98,17 +105,6 @@ export default function Dashboard() {
 		"dashboard_kpi_order",
 		defaultKpiOrder,
 	);
-
-	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect -- loading indicator for async fetch
-		setLoading(true);
-		api
-			.get<DashboardData>(`/summaries/dashboard${buildQueryString()}`)
-			.then((res) => {
-				setData(res.data);
-			})
-			.finally(() => setLoading(false));
-	}, [dateFrom, dateTo, marketplaceId, buildQueryString]);
 
 	// Fetch benchmark comparison if product has category_key
 	useEffect(() => {
