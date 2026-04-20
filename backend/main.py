@@ -70,6 +70,9 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.add_middleware(RequestLoggingMiddleware)
 
 # CORS — 开发模式允许前端 dev server
+# Explicit method/header allow-lists (defense in depth): backend uses only
+# GET/POST/PUT/DELETE (grep-verified 0 PATCH/HEAD). CORSMiddleware handles
+# preflight OPTIONS automatically; no need to list it.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -78,8 +81,8 @@ app.add_middleware(
         "http://localhost:3000",
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Content-Type", "Authorization", "Accept"],
 )
 
 # API 路由
