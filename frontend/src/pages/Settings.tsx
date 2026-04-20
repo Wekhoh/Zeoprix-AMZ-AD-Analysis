@@ -16,7 +16,6 @@ import {
 } from "antd";
 import {
 	CheckCircleOutlined,
-	CloudUploadOutlined,
 	ClearOutlined,
 	DeleteOutlined,
 	DatabaseOutlined,
@@ -30,15 +29,13 @@ import dayjs from "dayjs";
 import api from "../api/client";
 import PageHelp from "../components/PageHelp";
 import PageSkeleton from "../components/PageSkeleton";
+import SettingsBackupTab, {
+	type BackupItem,
+} from "../components/SettingsBackupTab";
+import SettingsImportHistoryTab, {
+	type ImportHistoryItem,
+} from "../components/SettingsImportHistoryTab";
 import type { OrganicSalesRecord, BenchmarkCategory } from "../types/api";
-
-interface BackupItem {
-	id: number;
-	file_path: string;
-	file_size: number;
-	backup_type: string;
-	created_at: string;
-}
 
 interface VariantItem {
 	id: number;
@@ -59,30 +56,6 @@ interface ProductItem {
 	variants: VariantItem[];
 }
 
-interface ImportHistoryItem {
-	id: number;
-	import_type: string;
-	file_name: string | null;
-	records_imported: number;
-	records_updated: number;
-	records_skipped: number;
-	status: string;
-	created_at: string;
-}
-
-const IMPORT_TYPE_LABELS: Record<string, string> = {
-	placement_csv: "展示位置 CSV",
-	operation_log: "操作日志",
-	search_term: "搜索词报告",
-	migration: "数据迁移",
-};
-
-const IMPORT_STATUS_COLORS: Record<string, string> = {
-	success: "green",
-	partial: "orange",
-	error: "red",
-};
-
 export default function Settings() {
 	const [backups, setBackups] = useState<BackupItem[]>([]);
 	const [products, setProducts] = useState<ProductItem[]>([]);
@@ -90,7 +63,6 @@ export default function Settings() {
 	const [categories, setCategories] = useState<BenchmarkCategory[]>([]);
 	const [importHistory, setImportHistory] = useState<ImportHistoryItem[]>([]);
 	const [loading, setLoading] = useState(true);
-	const [backupLoading, setBackupLoading] = useState(false);
 	const [salesModalOpen, setSalesModalOpen] = useState(false);
 	const [salesForm, setSalesForm] = useState({
 		date: "",
@@ -126,25 +98,6 @@ export default function Settings() {
 	};
 
 	useEffect(fetchData, []);
-
-	const handleCreateBackup = async () => {
-		setBackupLoading(true);
-		try {
-			await api.post("/settings/backups");
-			message.success("备份创建成功");
-			fetchData();
-		} catch {
-			message.error("备份失败");
-		} finally {
-			setBackupLoading(false);
-		}
-	};
-
-	const handleDeleteBackup = async (id: number) => {
-		await api.delete(`/settings/backups/${id}`);
-		message.success("备份已删除");
-		fetchData();
-	};
 
 	const handleClearData = async () => {
 		setClearLoading(true);
@@ -218,54 +171,6 @@ export default function Settings() {
 			message.error("更新失败");
 		}
 	};
-
-	const formatSize = (bytes: number) => {
-		if (bytes < 1024) return `${bytes} B`;
-		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-	};
-
-	const backupColumns = [
-		{ title: "文件名", dataIndex: "file_path", key: "file" },
-		{
-			title: "大小",
-			dataIndex: "file_size",
-			key: "size",
-			render: (v: number) => formatSize(v),
-			width: 100,
-		},
-		{
-			title: "类型",
-			dataIndex: "backup_type",
-			key: "type",
-			width: 80,
-			render: (t: string) => (
-				<Tag color={t === "auto" ? "blue" : "green"}>
-					{t === "auto" ? "自动" : "手动"}
-				</Tag>
-			),
-		},
-		{ title: "创建时间", dataIndex: "created_at", key: "time", width: 180 },
-		{
-			title: "操作",
-			key: "action",
-			width: 80,
-			render: (_: unknown, record: BackupItem) => (
-				<Popconfirm
-					title="确定删除此备份？"
-					onConfirm={() => handleDeleteBackup(record.id)}
-				>
-					<Button
-						type="text"
-						danger
-						icon={<DeleteOutlined />}
-						size="small"
-						aria-label="删除"
-					/>
-				</Popconfirm>
-			),
-		},
-	];
 
 	const variantColumns = [
 		{
@@ -454,28 +359,7 @@ export default function Settings() {
 					<DatabaseOutlined /> 数据备份
 				</span>
 			),
-			children: (
-				<div>
-					<Space style={{ marginBottom: 16 }}>
-						<Button
-							type="primary"
-							icon={<CloudUploadOutlined />}
-							onClick={handleCreateBackup}
-							loading={backupLoading}
-						>
-							创建备份
-						</Button>
-					</Space>
-					<Table
-						columns={backupColumns}
-						dataSource={backups}
-						rowKey="id"
-						size="small"
-						pagination={false}
-						locale={{ emptyText: "暂无备份，点击上方按钮创建" }}
-					/>
-				</div>
-			),
+			children: <SettingsBackupTab backups={backups} onRefresh={fetchData} />,
 		},
 		{
 			key: "products",
@@ -667,68 +551,7 @@ export default function Settings() {
 					<HistoryOutlined /> 导入历史
 				</span>
 			),
-			children: (
-				<Table
-					columns={[
-						{
-							title: "时间",
-							dataIndex: "created_at",
-							key: "time",
-							width: 180,
-						},
-						{
-							title: "类型",
-							dataIndex: "import_type",
-							key: "type",
-							width: 140,
-							render: (v: string) => (
-								<Tag color="blue">{IMPORT_TYPE_LABELS[v] ?? v}</Tag>
-							),
-						},
-						{
-							title: "文件名",
-							dataIndex: "file_name",
-							key: "file",
-							ellipsis: true,
-							render: (v: string | null) => v ?? "-",
-						},
-						{
-							title: "新增",
-							dataIndex: "records_imported",
-							key: "imported",
-							width: 80,
-						},
-						{
-							title: "更新",
-							dataIndex: "records_updated",
-							key: "updated",
-							width: 80,
-						},
-						{
-							title: "跳过",
-							dataIndex: "records_skipped",
-							key: "skipped",
-							width: 80,
-						},
-						{
-							title: "状态",
-							dataIndex: "status",
-							key: "status",
-							width: 80,
-							render: (v: string) => (
-								<Tag color={IMPORT_STATUS_COLORS[v] ?? "default"}>
-									{v === "success" ? "成功" : v === "error" ? "失败" : v}
-								</Tag>
-							),
-						},
-					]}
-					dataSource={importHistory}
-					rowKey="id"
-					size="small"
-					pagination={{ pageSize: 20 }}
-					locale={{ emptyText: "暂无导入记录" }}
-				/>
-			),
+			children: <SettingsImportHistoryTab history={importHistory} />,
 		},
 		{
 			key: "data-manage",
