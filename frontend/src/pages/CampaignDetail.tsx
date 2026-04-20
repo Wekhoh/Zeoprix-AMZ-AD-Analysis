@@ -1,24 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import {
-	Card,
-	Spin,
-	Table,
-	Tabs,
-	Tag,
-	Typography,
-	Button,
-	Input,
-	List,
-	Popconfirm,
-	message,
-	Space,
-} from "antd";
-import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { Card, Spin, Table, Tabs, Tag, Typography } from "antd";
+import { EditOutlined } from "@ant-design/icons";
 import ReactECharts from "echarts-for-react/lib/core";
 import BidSimulator from "../components/BidSimulator";
 import CampaignHeader from "../components/CampaignHeader";
 import CampaignKpiCards from "../components/CampaignKpiCards";
+import CampaignNotesTab from "../components/CampaignNotesTab";
 import echarts from "../utils/echartsCore";
 import { withTheme } from "../utils/chartTheme";
 import { fmtPct, fmtUsd } from "../utils/formatters";
@@ -50,7 +38,6 @@ export default function CampaignDetail() {
 			created_at: string | null;
 		}[]
 	>([]);
-	const [newNote, setNewNote] = useState("");
 	const [placementSummary, setPlacementSummary] = useState<
 		{
 			placement_type: string;
@@ -169,53 +156,6 @@ export default function CampaignDetail() {
 			.catch(() => {})
 			.finally(() => setLoading(false));
 	}, [id]);
-
-	const handleAddNote = async () => {
-		if (!newNote.trim() || !id) return;
-		await api.post("/notes", {
-			campaign_id: Number(id),
-			content: newNote.trim(),
-			note_type: "decision",
-		});
-		setNewNote("");
-		message.success("笔记已添加");
-		fetchNotes();
-	};
-
-	const handleDeleteNote = async (noteId: number) => {
-		try {
-			await api.delete(`/notes/${noteId}`);
-			fetchNotes();
-			// Show undo toast (soft delete allows restore)
-			message.open({
-				type: "success",
-				content: (
-					<span>
-						笔记已删除{" "}
-						<Button
-							type="link"
-							size="small"
-							style={{ padding: 0, marginLeft: 8 }}
-							onClick={async () => {
-								try {
-									await api.post(`/notes/${noteId}/restore`);
-									message.success("已恢复");
-									fetchNotes();
-								} catch {
-									message.error("恢复失败，笔记可能已被永久删除");
-								}
-							}}
-						>
-							撤销
-						</Button>
-					</span>
-				),
-				duration: 5,
-			});
-		} catch {
-			message.error("删除失败");
-		}
-	};
 
 	const wowDeltas = useMemo(
 		() => (trends.length > 0 ? calcWowDeltas(trends) : null),
@@ -696,51 +636,9 @@ export default function CampaignDetail() {
 					<EditOutlined /> 运营笔记 ({notes.length})
 				</span>
 			),
-			children: (
-				<div>
-					<Space.Compact style={{ width: "100%", marginBottom: 16 }}>
-						<Input
-							placeholder="记录优化决策、观察、提醒..."
-							value={newNote}
-							onChange={(e) => setNewNote(e.target.value)}
-							onPressEnter={handleAddNote}
-						/>
-						<Button type="primary" onClick={handleAddNote}>
-							添加笔记
-						</Button>
-					</Space.Compact>
-					<List
-						dataSource={notes}
-						locale={{ emptyText: "暂无笔记" }}
-						renderItem={(note) => (
-							<List.Item
-								actions={[
-									<Popconfirm
-										key="del"
-										title="确定删除？"
-										onConfirm={() => handleDeleteNote(note.id)}
-									>
-										<Button
-											type="text"
-											danger
-											icon={<DeleteOutlined />}
-											size="small"
-											aria-label="删除笔记"
-										/>
-									</Popconfirm>,
-								]}
-							>
-								<List.Item.Meta
-									title={note.content}
-									description={
-										note.created_at ? note.created_at.slice(0, 19) : ""
-									}
-								/>
-							</List.Item>
-						)}
-					/>
-				</div>
-			),
+			children: id ? (
+				<CampaignNotesTab campaignId={id} notes={notes} onChange={fetchNotes} />
+			) : null,
 		},
 	];
 
