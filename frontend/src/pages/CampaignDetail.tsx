@@ -1,11 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
 	Card,
-	Col,
-	Row,
 	Spin,
-	Statistic,
 	Table,
 	Tabs,
 	Tag,
@@ -17,21 +14,15 @@ import {
 	message,
 	Space,
 } from "antd";
-import {
-	ArrowLeftOutlined,
-	DollarOutlined,
-	ShoppingCartOutlined,
-	RiseOutlined,
-	PercentageOutlined,
-	EditOutlined,
-	DeleteOutlined,
-} from "@ant-design/icons";
+import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import ReactECharts from "echarts-for-react/lib/core";
 import BidSimulator from "../components/BidSimulator";
+import CampaignHeader from "../components/CampaignHeader";
+import CampaignKpiCards from "../components/CampaignKpiCards";
 import echarts from "../utils/echartsCore";
 import { withTheme } from "../utils/chartTheme";
 import { fmtPct, fmtUsd } from "../utils/formatters";
-import { calcWowDeltas, WowIndicator } from "../utils/wowDeltas";
+import { calcWowDeltas } from "../utils/wowDeltas";
 import api from "../api/client";
 import { useTheme } from "../hooks/useTheme";
 import type {
@@ -41,7 +32,7 @@ import type {
 	OperationLog,
 } from "../types/api";
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 export default function CampaignDetail() {
 	const { id } = useParams<{ id: string }>();
@@ -273,13 +264,6 @@ export default function CampaignDetail() {
 			<Spin size="large" style={{ display: "block", margin: "100px auto" }} />
 		);
 	}
-
-	const statusColor =
-		campaign.status === "Delivering"
-			? "green"
-			: campaign.status === "Paused"
-				? "red"
-				: "default";
 
 	const ATTRIBUTION_WINDOW_MAP: Record<string, number> = {
 		SP: 7,
@@ -762,98 +746,13 @@ export default function CampaignDetail() {
 
 	return (
 		<div>
-			{/* Section A: Header */}
-			<div style={{ marginBottom: 16 }}>
-				<Link
-					to="/campaigns"
-					style={{ color: "#1677ff", marginBottom: 8, display: "inline-block" }}
-				>
-					<ArrowLeftOutlined /> 返回广告活动列表
-				</Link>
-				<div
-					style={{
-						display: "flex",
-						alignItems: "center",
-						gap: 12,
-						marginBottom: 8,
-					}}
-				>
-					<Title level={2} style={{ margin: 0 }}>
-						{campaign.name}
-					</Title>
-					<Tag color={statusColor}>{campaign.status}</Tag>
-				</div>
-				<div
-					style={{
-						display: "flex",
-						gap: 24,
-						color: isDark ? "#9CA3AF" : "#6B7280",
-					}}
-				>
-					<Text>类型: {campaign.ad_type}</Text>
-					<Text>竞价策略: {campaign.bidding_strategy}</Text>
-					{isDynamicUpDown && <Tag color="orange">竞价可翻倍</Tag>}
-					{campaign.base_bid != null && (
-						<Text>基础出价: ${campaign.base_bid}</Text>
-					)}
-					<Text>归因窗口: {attributionDays} 天</Text>
-					{campaign.portfolio && <Text>组合: {campaign.portfolio}</Text>}
-					{campaign.first_date && campaign.last_date && (
-						<Text>
-							数据范围: {campaign.first_date} ~ {campaign.last_date}
-						</Text>
-					)}
-				</div>
-			</div>
-
-			{/* Section B: KPI Cards */}
-			<Row gutter={16} style={{ marginBottom: 24 }}>
-				<Col xs={24} sm={12} lg={6}>
-					<Card>
-						<Statistic
-							title="总花费"
-							value={campaign.total_spend}
-							precision={2}
-							prefix={<DollarOutlined />}
-							suffix="USD"
-						/>
-						{wowDeltas && <WowIndicator delta={wowDeltas.spend} />}
-					</Card>
-				</Col>
-				<Col xs={24} sm={12} lg={6}>
-					<Card>
-						<Statistic
-							title="总订单"
-							value={campaign.total_orders}
-							prefix={<ShoppingCartOutlined />}
-						/>
-						{wowDeltas && <WowIndicator delta={wowDeltas.orders} />}
-					</Card>
-				</Col>
-				<Col xs={24} sm={12} lg={6}>
-					<Card>
-						<Statistic
-							title="ROAS"
-							value={campaign.roas ?? 0}
-							precision={2}
-							prefix={<RiseOutlined />}
-						/>
-						{wowDeltas && <WowIndicator delta={wowDeltas.roas} />}
-					</Card>
-				</Col>
-				<Col xs={24} sm={12} lg={6}>
-					<Card>
-						<Statistic
-							title="ACOS"
-							value={campaign.acos ? campaign.acos * 100 : 0}
-							precision={2}
-							prefix={<PercentageOutlined />}
-							suffix="%"
-						/>
-						{wowDeltas && <WowIndicator delta={wowDeltas.acos} invertColor />}
-					</Card>
-				</Col>
-			</Row>
+			<CampaignHeader
+				campaign={campaign}
+				isDark={isDark}
+				attributionDays={attributionDays}
+				isDynamicUpDown={Boolean(isDynamicUpDown)}
+			/>
+			<CampaignKpiCards campaign={campaign} wowDeltas={wowDeltas} />
 
 			{/* Section C: Daily Trend */}
 			<Card title="每日趋势" style={{ marginBottom: 24 }}>
