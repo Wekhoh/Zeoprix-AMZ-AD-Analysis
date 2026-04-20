@@ -115,6 +115,7 @@ async def process_placement_csv_upload(db: Session, files: list[UploadFile]) -> 
             )
 
         except Exception as e:
+            logger.exception("Placement CSV import failed for file %s", file.filename)
             db.rollback()
             details.append(ImportDetail(message=f"{file.filename}: 错误 - {e}", level="error"))
 
@@ -200,6 +201,7 @@ async def preview_csv_upload(files: list[UploadFile], db=None) -> dict:
             await file.seek(0)
 
         except Exception as e:
+            logger.exception("CSV preview failed for file %s", file.filename)
             previews.append(
                 {
                     "filename": file.filename,
@@ -316,6 +318,7 @@ async def process_operation_log_upload(db: Session, files: list[UploadFile]) -> 
             )
 
         except Exception as e:
+            logger.exception("Operation log import failed for file %s", file.filename)
             db.rollback()
             details.append(ImportDetail(message=f"{file.filename}: 错误 - {e}", level="error"))
 
