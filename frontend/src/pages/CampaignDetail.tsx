@@ -7,6 +7,8 @@ import BidSimulator from "../components/BidSimulator";
 import CampaignHeader from "../components/CampaignHeader";
 import CampaignKpiCards from "../components/CampaignKpiCards";
 import CampaignNotesTab from "../components/CampaignNotesTab";
+import OperationLogsTab from "../components/OperationLogsTab";
+import PlacementDetailsTab from "../components/PlacementDetailsTab";
 import echarts from "../utils/echartsCore";
 import { withTheme } from "../utils/chartTheme";
 import { fmtPct, fmtUsd } from "../utils/formatters";
@@ -261,70 +263,6 @@ export default function CampaignDetail() {
 	};
 
 	/* ---------- Section D: Tab columns ---------- */
-	const placementColumns = [
-		{ title: "日期", dataIndex: "date", key: "date", width: 110 },
-		{
-			title: "展示位置",
-			dataIndex: "placement_type",
-			key: "placement",
-			width: 130,
-		},
-		{ title: "曝光量", dataIndex: "impressions", key: "imp", width: 90 },
-		{ title: "点击量", dataIndex: "clicks", key: "clk", width: 80 },
-		{
-			title: "CTR",
-			dataIndex: "ctr",
-			key: "ctr",
-			width: 80,
-			render: (v: number | null) => (v ? `${(v * 100).toFixed(2)}%` : "-"),
-		},
-		{
-			title: "花费",
-			dataIndex: "spend",
-			key: "spend",
-			width: 90,
-			render: (v: number) => `$${v?.toFixed(2)}`,
-		},
-		{
-			title: "CPC",
-			dataIndex: "cpc",
-			key: "cpc",
-			width: 80,
-			render: (v: number | null) => (v ? `$${v.toFixed(2)}` : "-"),
-		},
-		{ title: "订单", dataIndex: "orders", key: "ord", width: 70 },
-		{
-			title: "销售额",
-			dataIndex: "sales",
-			key: "sales",
-			width: 90,
-			render: (v: number) => `$${v?.toFixed(2)}`,
-		},
-		{
-			title: "ROAS",
-			dataIndex: "roas",
-			key: "roas",
-			width: 80,
-			render: (v: number | null) => v?.toFixed(2) ?? "-",
-		},
-		{
-			title: "ACOS",
-			dataIndex: "acos",
-			key: "acos",
-			width: 80,
-			render: (v: number | null) => (v ? `${(v * 100).toFixed(2)}%` : "-"),
-		},
-	];
-
-	const logColumns = [
-		{ title: "日期", dataIndex: "date", key: "date", width: 110 },
-		{ title: "时间", dataIndex: "time", key: "time", width: 70 },
-		{ title: "变更类型", dataIndex: "change_type", key: "change", width: 200 },
-		{ title: "修改前", dataIndex: "from_value", key: "from", width: 150 },
-		{ title: "修改后", dataIndex: "to_value", key: "to", width: 150 },
-		{ title: "层级", dataIndex: "level_type", key: "level", width: 90 },
-	];
-
 	const placementSummaryColumns = [
 		{
 			title: "展示位置",
@@ -606,28 +544,12 @@ export default function CampaignDetail() {
 		{
 			key: "placements",
 			label: "展示位置明细",
-			children: (
-				<Table<PlacementRecord>
-					columns={placementColumns}
-					dataSource={placements}
-					rowKey="id"
-					size="small"
-					scroll={{ x: 1200 }}
-				/>
-			),
+			children: <PlacementDetailsTab data={placements} />,
 		},
 		{
 			key: "logs",
 			label: "操作日志",
-			children: (
-				<Table<OperationLog>
-					columns={logColumns}
-					dataSource={logs}
-					rowKey="id"
-					size="small"
-					scroll={{ x: 1000 }}
-				/>
-			),
+			children: <OperationLogsTab data={logs} />,
 		},
 		{
 			key: "notes",
