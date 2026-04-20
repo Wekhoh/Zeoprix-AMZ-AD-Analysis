@@ -30,17 +30,35 @@ class NoteOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-@router.get("", response_model=list[NoteOut])
+@router.get("")
 def list_notes(
     campaign_id: Optional[int] = Query(None),
+    page: Optional[int] = Query(None, ge=1),
+    page_size: Optional[int] = Query(None, ge=1, le=500),
     db: Session = Depends(get_db),
 ):
-    """获取笔记列表（不含软删除）"""
+    """获取笔记列表（不含软删除）.
+
+    Backward-compatible pagination: if neither ``page`` nor ``page_size`` is
+    supplied, returns a flat list (legacy shape used by
+    ``CampaignDetail.tsx:159,170``). If either is supplied, returns
+    ``{data, total, page, page_size}``.
+    """
     q = db.query(Note).filter(Note.deleted_at.is_(None))
     if campaign_id:
         q = q.filter(Note.campaign_id == campaign_id)
-    notes = q.order_by(Note.created_at.desc()).all()
-    return [
+    q = q.order_by(Note.created_at.desc())
+
+    paginated = page is not None or page_size is not None
+    total = q.count() if paginated else 0
+    if paginated:
+        _page = page or 1
+        _size = page_size or 50
+        notes = q.offset((_page - 1) * _size).limit(_size).all()
+    else:
+        notes = q.all()
+
+    items = [
         NoteOut(
             id=n.id,
             campaign_id=n.campaign_id,
@@ -51,6 +69,15 @@ def list_notes(
         )
         for n in notes
     ]
+
+    if paginated:
+        return {
+            "data": items,
+            "total": total,
+            "page": page or 1,
+            "page_size": page_size or 50,
+        }
+    return items
 
 
 @router.get("/trash")
