@@ -29,7 +29,7 @@ import ColumnSettingsButton, {
 } from "../components/ColumnSettingsButton";
 import { useFilterParams } from "../hooks/useFilterParams";
 import { useColumnVisibility } from "../hooks/useColumnVisibility";
-import { fmtUsd, fmtPct, fmtNum } from "../utils/formatters";
+import { fmtNum, fmtPct, fmtRoas, fmtUsd } from "../utils/formatters";
 import type { Campaign } from "../types/api";
 
 interface FilterPreset {
@@ -257,7 +257,7 @@ export default function Campaigns() {
 			render: (v: number | null) =>
 				v != null ? (
 					<span style={{ color: v >= 3 ? "#52c41a" : undefined }}>
-						{v.toFixed(2)}
+						{fmtRoas(v)}
 					</span>
 				) : (
 					"-"
@@ -277,9 +277,7 @@ export default function Campaigns() {
 				const strokeColor =
 					pct > 90 ? "#ff4d4f" : pct > 70 ? "#faad14" : "#52c41a";
 				return (
-					<Tooltip
-						title={`花费 $${spend.toFixed(2)} / 日预算 $${budget.toFixed(2)}`}
-					>
+					<Tooltip title={`花费 ${fmtUsd(spend)} / 日预算 ${fmtUsd(budget)}`}>
 						<div style={{ minWidth: 80 }}>
 							<div style={{ fontSize: 12 }}>${budget.toFixed(0)}/天</div>
 							<Progress
