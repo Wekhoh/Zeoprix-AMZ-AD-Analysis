@@ -19,3 +19,10 @@ export const fmtPct = (v: number | null | undefined, digits = 1): string =>
 
 export const fmtNum = (v: number | null | undefined): string =>
 	v != null ? v.toLocaleString() : "-";
+
+/**
+ * Format a ROAS value (no currency prefix, 2 decimal places, null→"-").
+ * Kept separate from fmtUsd because ROAS is a ratio not a money amount.
+ */
+export const fmtRoas = (v: number | null | undefined): string =>
+	v != null ? v.toFixed(2) : "-";

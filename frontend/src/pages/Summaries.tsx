@@ -5,6 +5,7 @@ import { FileExcelOutlined, FilePdfOutlined } from "@ant-design/icons";
 import api from "../api/client";
 import FilterToolbar from "../components/FilterToolbar";
 import { useFilterParams } from "../hooks/useFilterParams";
+import { fmtPct, fmtRoas, fmtUsd } from "../utils/formatters";
 import type { SummaryRow } from "../types/api";
 
 export default function Summaries() {
@@ -65,26 +66,26 @@ export default function Summaries() {
 			title: "花费",
 			dataIndex: "spend",
 			key: "spend",
-			render: (v: number) => `$${v?.toFixed(2)}`,
+			render: fmtUsd,
 		},
 		{ title: "订单", dataIndex: "orders", key: "ord" },
 		{
 			title: "销售额",
 			dataIndex: "sales",
 			key: "sales",
-			render: (v: number) => `$${v?.toFixed(2)}`,
+			render: fmtUsd,
 		},
 		{
 			title: "ROAS",
 			dataIndex: "roas",
 			key: "roas",
-			render: (v: number | null) => v?.toFixed(2) ?? "-",
+			render: fmtRoas,
 		},
 		{
 			title: "ACOS",
 			dataIndex: "acos",
 			key: "acos",
-			render: (v: number | null) => (v ? `${(v * 100).toFixed(2)}%` : "-"),
+			render: (v: number | null) => fmtPct(v, 2),
 		},
 	];
 
