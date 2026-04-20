@@ -6,6 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.config import settings
+from backend.logging_config import get_logger
 from backend.models import Campaign, ImportHistory, OrganicSales, PlacementRecord, ProductVariant
 from backend.services.kpi_calculator import (
     calc_acos,
@@ -14,6 +15,8 @@ from backend.services.kpi_calculator import (
     calc_cvr,
     calc_roas,
 )
+
+logger = get_logger("summary_service")
 
 
 def _base_query(
@@ -245,6 +248,10 @@ def _generate_dashboard_alerts(campaigns: list[dict], db: Session = None) -> lis
 
             risks = get_inventory_risk_for_campaigns(db)
         except Exception:
+            logger.warning(
+                "Inventory risk fetch failed; proceeding without inventory alerts",
+                exc_info=True,
+            )
             risks = []
 
         for risk in risks:
@@ -277,6 +284,10 @@ def _calc_inventory_status(db: Session) -> dict:
 
         summary = get_risk_summary(db)
     except Exception:
+        logger.warning(
+            "Inventory status summary failed; dashboard banner will hide inventory block",
+            exc_info=True,
+        )
         return {
             "has_data": False,
             "last_import_date": None,
