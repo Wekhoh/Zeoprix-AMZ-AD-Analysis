@@ -1,17 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import {
-	Alert,
-	Button,
-	Card,
-	Col,
-	Progress,
-	Row,
-	Statistic,
-	Table,
-	Tooltip,
-} from "antd";
+import { Alert, Button, Card, Col, Row, Statistic, Table, Tooltip } from "antd";
 import {
 	DollarOutlined,
 	ShoppingCartOutlined,
@@ -39,6 +29,7 @@ import { useTheme } from "../hooks/useTheme";
 import { useCardOrder } from "../hooks/useCardOrder";
 import PageSkeleton from "../components/PageSkeleton";
 import Sparkline from "../components/Sparkline";
+import DashboardBenchmarkComparison from "../components/DashboardBenchmarkComparison";
 import { calcWowDeltas, WowIndicator } from "../utils/wowDeltas";
 
 function SortableKpiCard({
@@ -65,17 +56,9 @@ function SortableKpiCard({
 		</div>
 	);
 }
-import type {
-	DashboardAlert,
-	DashboardData,
-	TopCampaign,
-	BenchmarkResult,
-} from "../types/api";
+import type { DashboardAlert, DashboardData, TopCampaign } from "../types/api";
 
 export default function Dashboard() {
-	const [benchmarkData, setBenchmarkData] = useState<BenchmarkResult | null>(
-		null,
-	);
 	const [showOnboarding, setShowOnboarding] = useState(false);
 	const { dateFrom, dateTo, marketplaceId, buildQueryString } =
 		useFilterParams();
@@ -105,30 +88,6 @@ export default function Dashboard() {
 		"dashboard_kpi_order",
 		defaultKpiOrder,
 	);
-
-	// Fetch benchmark comparison if product has category_key
-	useEffect(() => {
-		api
-			.get<{ id: number; category_key: string | null }[]>("/settings/products")
-			.then((res) => {
-				const products = res.data;
-				const withCategory = products.find(
-					(p: { category_key: string | null }) => p.category_key,
-				);
-				if (withCategory?.category_key) {
-					const qs = buildQueryString();
-					const sep = qs ? "&" : "?";
-					api
-						.get<BenchmarkResult>(
-							`/benchmarks/compare${qs}${sep}category=${withCategory.category_key}`,
-						)
-						.then((r) => setBenchmarkData(r.data))
-						.catch(() => setBenchmarkData(null));
-				} else {
-					setBenchmarkData(null);
-				}
-			});
-	}, [buildQueryString]);
 
 	const isEmpty =
 		!data ||
@@ -775,74 +734,7 @@ export default function Dashboard() {
 				</Col>
 			</Row>
 
-			{benchmarkData && benchmarkData.comparisons.length > 0 && (
-				<Card
-					title={`品类基准对比 - ${benchmarkData.category_label}`}
-					style={{ marginBottom: 24 }}
-				>
-					<Row gutter={[24, 16]}>
-						{benchmarkData.comparisons.map((item) => {
-							const isGood =
-								item.metric === "ACOS" || item.metric === "CPC"
-									? item.status === "below"
-									: item.status === "above";
-							const maxVal = Math.max(item.actual, item.benchmark) * 1.2;
-							const actualPct = maxVal > 0 ? (item.actual / maxVal) * 100 : 0;
-							const benchPct = maxVal > 0 ? (item.benchmark / maxVal) * 100 : 0;
-							const formatVal = (v: number) =>
-								item.metric === "CTR" ||
-								item.metric === "CVR" ||
-								item.metric === "ACOS"
-									? `${(v * 100).toFixed(2)}%`
-									: `$${v.toFixed(2)}`;
-							return (
-								<Col xs={24} sm={12} md={12} lg={6} key={item.metric}>
-									<div style={{ marginBottom: 8 }}>
-										<strong>{item.metric}</strong>
-										<span
-											style={{
-												float: "right",
-												color: isGood ? "#52c41a" : "#ff4d4f",
-												fontSize: 12,
-											}}
-										>
-											{item.diff_pct > 0 ? "+" : ""}
-											{item.diff_pct}%
-										</span>
-									</div>
-									<div
-										style={{ marginBottom: 4, fontSize: 12, color: "#9CA3AF" }}
-									>
-										实际: {formatVal(item.actual)}
-									</div>
-									<Progress
-										percent={actualPct}
-										strokeColor={isGood ? "#52c41a" : "#ff4d4f"}
-										showInfo={false}
-										size="small"
-									/>
-									<div
-										style={{
-											marginBottom: 4,
-											marginTop: 4,
-											fontSize: 12,
-											color: "#9CA3AF",
-										}}
-									>
-										基准: {formatVal(item.benchmark)}
-									</div>
-									<Progress
-										percent={benchPct}
-										strokeColor="#d9d9d9"
-										showInfo={false}
-										size="small"
-									/>
-								</Col>
-							);
-						})}
-					</Row>
-				</Card>
-			)}
+			<DashboardBenchmarkComparison buildQueryString={buildQueryString} />
 		</div>
 	);
 }
