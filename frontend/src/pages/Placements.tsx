@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Table, Button, Flex } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
 import { exportToCsv } from "../utils/exportCsv";
+import { fmtPct, fmtRoas, fmtUsd } from "../utils/formatters";
 import api from "../api/client";
 import FilterToolbar from "../components/FilterToolbar";
 import PageHelp from "../components/PageHelp";
@@ -104,21 +105,21 @@ export default function Placements() {
 			dataIndex: "ctr",
 			key: "ctr",
 			width: 80,
-			render: (v: number | null) => (v ? `${(v * 100).toFixed(2)}%` : "-"),
+			render: (v: number | null) => fmtPct(v, 2),
 		},
 		{
 			title: "花费",
 			dataIndex: "spend",
 			key: "spend",
 			width: 90,
-			render: (v: number) => `$${v?.toFixed(2)}`,
+			render: fmtUsd,
 		},
 		{
 			title: "CPC",
 			dataIndex: "cpc",
 			key: "cpc",
 			width: 80,
-			render: (v: number | null) => (v ? `$${v.toFixed(2)}` : "-"),
+			render: fmtUsd,
 		},
 		{ title: "订单", dataIndex: "orders", key: "ord", width: 70 },
 		{
@@ -126,21 +127,21 @@ export default function Placements() {
 			dataIndex: "sales",
 			key: "sales",
 			width: 90,
-			render: (v: number) => `$${v?.toFixed(2)}`,
+			render: fmtUsd,
 		},
 		{
 			title: "ROAS",
 			dataIndex: "roas",
 			key: "roas",
 			width: 80,
-			render: (v: number | null) => v?.toFixed(2) ?? "-",
+			render: fmtRoas,
 		},
 		{
 			title: "ACOS",
 			dataIndex: "acos",
 			key: "acos",
 			width: 80,
-			render: (v: number | null) => (v ? `${(v * 100).toFixed(2)}%` : "-"),
+			render: (v: number | null) => fmtPct(v, 2),
 		},
 	];
 
