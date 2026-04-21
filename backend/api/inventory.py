@@ -11,6 +11,7 @@ from backend.services.inventory_service import (
     get_risk_summary,
     import_inventory,
 )
+from backend.utils.encoding_helper import decode_with_fallback
 
 router = APIRouter()
 
