@@ -19,7 +19,7 @@ import {
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import "dayjs/locale/zh-cn";
-import ReactECharts from "echarts-for-react/lib/core";
+import ReactECharts from "../utils/reactEcharts";
 import echarts from "../utils/echartsCore";
 import api from "../api/client";
 import { withTheme, CHART_COLORS } from "../utils/chartTheme";

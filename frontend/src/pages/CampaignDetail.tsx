@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Card, Spin, Tabs, Typography } from "antd";
 import { EditOutlined } from "@ant-design/icons";
-import ReactECharts from "echarts-for-react/lib/core";
 import BidSimulator from "../components/BidSimulator";
 import CampaignHeader from "../components/CampaignHeader";
 import CampaignKpiCards from "../components/CampaignKpiCards";
@@ -14,6 +13,7 @@ import PlacementSummaryTab, {
 } from "../components/PlacementSummaryTab";
 import AdGroupsTab, { type AdGroup } from "../components/AdGroupsTab";
 import echarts from "../utils/echartsCore";
+import ReactECharts from "../utils/reactEcharts";
 import { withTheme } from "../utils/chartTheme";
 import { calcWowDeltas } from "../utils/wowDeltas";
 import api from "../api/client";

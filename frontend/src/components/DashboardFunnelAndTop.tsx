@@ -1,7 +1,7 @@
 import { Card, Col, Row, Table } from "antd";
 import { Link } from "react-router-dom";
-import ReactECharts from "echarts-for-react/lib/core";
 import echarts from "../utils/echartsCore";
+import ReactECharts from "../utils/reactEcharts";
 import type { DashboardData, TopCampaign } from "../types/api";
 
 interface DashboardFunnelAndTopProps {

@@ -1,6 +1,6 @@
 import { Card, Col, Row } from "antd";
-import ReactECharts from "echarts-for-react/lib/core";
 import echarts from "../utils/echartsCore";
+import ReactECharts from "../utils/reactEcharts";
 import { CHART_COLORS, withTheme } from "../utils/chartTheme";
 import type { DashboardData } from "../types/api";
 
