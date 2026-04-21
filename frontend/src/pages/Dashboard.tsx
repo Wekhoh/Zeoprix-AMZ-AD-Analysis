@@ -113,7 +113,7 @@ export default function Dashboard() {
 									: "info"
 					}
 					showIcon
-					message={data.freshness.message}
+					title={data.freshness.message}
 					description={
 						data.freshness.last_import_at
 							? `最后导入: ${data.freshness.last_import_at.slice(0, 19)}${
@@ -141,7 +141,7 @@ export default function Dashboard() {
 				<Alert
 					type={data.inventory_status.critical_count > 0 ? "error" : "warning"}
 					showIcon
-					message={data.inventory_status.message}
+					title={data.inventory_status.message}
 					description={
 						data.inventory_status.last_import_date
 							? `库存快照日期: ${data.inventory_status.last_import_date}`
@@ -163,7 +163,7 @@ export default function Dashboard() {
 				<Alert
 					type={data.budget_pacing.level === "danger" ? "error" : "warning"}
 					showIcon
-					message={data.budget_pacing.message}
+					title={data.budget_pacing.message}
 					description={`本月已花费 $${data.budget_pacing.current_spend?.toFixed(0)} / 预算 $${data.budget_pacing.monthly_budget?.toFixed(0)}（第 ${data.budget_pacing.days_elapsed} / ${data.budget_pacing.days_total} 天）`}
 					style={{ marginBottom: 16 }}
 					closable
