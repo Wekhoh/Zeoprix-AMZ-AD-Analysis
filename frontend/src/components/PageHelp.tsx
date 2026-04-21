@@ -31,7 +31,7 @@ export default function PageHelp({ title, content }: PageHelpProps) {
 			<Drawer
 				title={title}
 				placement="right"
-				width={400}
+				size={400}
 				onClose={() => setOpen(false)}
 				open={open}
 			>

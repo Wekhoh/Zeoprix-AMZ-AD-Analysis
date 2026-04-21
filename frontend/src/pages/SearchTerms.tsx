@@ -680,7 +680,7 @@ export default function SearchTerms() {
 							type="info"
 							showIcon
 							style={{ marginTop: 16 }}
-							message="添加否定关键词后需要 72 小时才能生效（否定 ASIN 需 96 小时）。请耐心等待效果显现。"
+							title="添加否定关键词后需要 72 小时才能生效（否定 ASIN 需 96 小时）。请耐心等待效果显现。"
 						/>
 					)}
 				</Card>
