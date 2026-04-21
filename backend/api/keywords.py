@@ -12,6 +12,7 @@ from backend.services.keyword_service import (
     get_keywords_for_ad_group,
     import_keyword_report,
 )
+from backend.utils.encoding_helper import decode_with_fallback
 
 router = APIRouter()
 
