@@ -1,6 +1,7 @@
 """搜索词报告模型（Phase 3）"""
 
-from sqlalchemy import Column, Index, Integer, String, Float, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Float, ForeignKey, Index, Integer, String, UniqueConstraint
+
 from backend.models.base import Base, TimestampMixin
 
 

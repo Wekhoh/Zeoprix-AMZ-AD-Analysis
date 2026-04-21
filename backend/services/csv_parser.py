@@ -9,8 +9,8 @@ import os
 import re
 from typing import Optional
 
-from backend.utils.date_parser import parse_date_from_filename
 from backend.utils.campaign_parser import translate_placement
+from backend.utils.date_parser import parse_date_from_filename
 
 
 def _clean_num(val, as_int=False):

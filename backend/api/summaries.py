@@ -1,18 +1,19 @@
 """数据汇总 API — 替代 Excel 的 eng_ 汇总表"""
 
 from typing import Optional
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.middleware import validate_date_param
 from backend.services.summary_service import (
-    summary_by_date,
-    summary_by_campaign,
-    summary_by_placement,
-    dashboard_overview,
-    compare_periods,
     compare_multi_periods,
+    compare_periods,
+    dashboard_overview,
+    summary_by_campaign,
+    summary_by_date,
+    summary_by_placement,
 )
 
 router = APIRouter()

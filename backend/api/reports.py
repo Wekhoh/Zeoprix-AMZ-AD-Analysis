@@ -1,10 +1,11 @@
 """报告导出 API"""
 
+from io import BytesIO
 from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from io import BytesIO
 
 from backend.database import get_db
 from backend.middleware import validate_date_param

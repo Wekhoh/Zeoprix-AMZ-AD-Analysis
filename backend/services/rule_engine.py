@@ -2,15 +2,16 @@
 
 import operator
 from datetime import datetime, timedelta, timezone
+
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.models import Campaign, PlacementRecord, Rule
 from backend.services.kpi_calculator import (
-    calc_ctr,
-    calc_cpc,
-    calc_roas,
     calc_acos,
+    calc_cpc,
+    calc_ctr,
+    calc_roas,
 )
 
 OPERATOR_MAP = {

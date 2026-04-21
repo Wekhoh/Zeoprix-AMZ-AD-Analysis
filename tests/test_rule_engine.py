@@ -1,8 +1,8 @@
 """Tests for rule_engine — condition checking, batch metrics, rule evaluation"""
 
 from backend.services.rule_engine import (
-    _check_condition,
     _batch_campaign_metrics,
+    _check_condition,
     evaluate_rules,
     get_rule_results,
     seed_default_rules,

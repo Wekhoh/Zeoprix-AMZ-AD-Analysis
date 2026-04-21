@@ -13,7 +13,7 @@ from typing import Optional
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from backend.models import Campaign, Marketplace
+from backend.models import Campaign
 from backend.models.search_term import SearchTermReport
 
 # 亚马逊搜索词报告的可能列名映射
@@ -107,9 +107,6 @@ def import_search_terms(db: Session, content: str, filename: str) -> dict:
             "skipped": 0,
             "error": "未识别到搜索词数据，请检查 CSV 格式",
         }
-
-    # 获取默认站点
-    marketplace = db.query(Marketplace).filter_by(code="US").first()
 
     imported = 0
     skipped = 0

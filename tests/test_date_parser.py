@@ -1,9 +1,9 @@
 """Tests for date parser utility functions"""
 
 from backend.utils.date_parser import (
+    is_datetime_like,
     parse_amazon_datetime,
     parse_date_from_filename,
-    is_datetime_like,
 )
 
 

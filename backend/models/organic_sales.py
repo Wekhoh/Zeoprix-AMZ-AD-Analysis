@@ -1,6 +1,7 @@
 """有机销售数据模型 — 用于 TACoS 计算"""
 
-from sqlalchemy import Column, Integer, String, Float
+from sqlalchemy import Column, Float, Integer, String
+
 from backend.models.base import Base, TimestampMixin
 
 

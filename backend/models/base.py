@@ -1,7 +1,8 @@
 """SQLAlchemy 声明式基类 + 通用 mixin"""
 
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, DateTime
+
+from sqlalchemy import Column, DateTime
 from sqlalchemy.orm import DeclarativeBase
 
 

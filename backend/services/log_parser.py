@@ -4,8 +4,7 @@
 已通过 520 条数据审计验证
 """
 
-import re
-from backend.utils.date_parser import parse_amazon_datetime, is_datetime_like
+from backend.utils.date_parser import is_datetime_like, parse_amazon_datetime
 
 
 def parse_operation_log_text(

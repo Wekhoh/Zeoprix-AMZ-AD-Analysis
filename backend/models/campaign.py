@@ -1,7 +1,8 @@
 """广告活动和广告组模型"""
 
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Float, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import relationship
+
 from backend.models.base import Base, TimestampMixin
 
 

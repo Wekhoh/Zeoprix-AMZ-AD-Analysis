@@ -1,9 +1,9 @@
 """Tests for CSV parser functions"""
 
 from backend.services.csv_parser import (
-    parse_csv_placement_data,
-    detect_report_type,
     _clean_num,
+    detect_report_type,
+    parse_csv_placement_data,
 )
 
 

@@ -3,36 +3,35 @@ Excel -> SQLite 迁移服务
 从 亚马逊广告智能追踪系统_Ultimate.xlsx 迁移全部历史数据
 """
 
-import io
 import tempfile
 from pathlib import Path
+
 from fastapi import UploadFile
 from openpyxl import load_workbook
 from sqlalchemy.orm import Session
 
 from backend.logging_config import get_logger
-
-logger = get_logger("migration")
-
 from backend.models import (
+    AdGroup,
+    AdGroupDailyRecord,
+    Campaign,
+    CampaignDailyRecord,
+    ImportHistory,
     Marketplace,
+    OperationLog,
+    PlacementRecord,
     Product,
     ProductVariant,
-    Campaign,
-    AdGroup,
-    PlacementRecord,
-    CampaignDailyRecord,
-    AdGroupDailyRecord,
-    OperationLog,
-    ImportHistory,
 )
-from backend.schemas.import_result import ImportResult, ImportDetail
+from backend.schemas.import_result import ImportDetail, ImportResult
 from backend.utils.campaign_parser import (
-    get_portfolio_name,
-    extract_default_bid,
     extract_bidding_strategy_type,
+    extract_default_bid,
     extract_variant_code,
+    get_portfolio_name,
 )
+
+logger = get_logger("migration")
 
 # Excel 工作表配置（与 data_importer.py 一致）
 SHEET_CONFIG = {

@@ -2,22 +2,23 @@
 
 import json
 from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.models import (
-    Campaign,
     AdGroup,
-    PlacementRecord,
-    CampaignDailyRecord,
     AdGroupDailyRecord,
+    Campaign,
+    CampaignDailyRecord,
+    PlacementRecord,
 )
-from backend.schemas.campaign import CampaignOut, CampaignDetail
+from backend.schemas.campaign import CampaignDetail, CampaignOut
+from backend.services.kpi_calculator import calc_acos, calc_cpc, calc_ctr, calc_roas
 from backend.services.summary_service import summary_by_campaign
-from backend.services.kpi_calculator import calc_ctr, calc_cpc, calc_roas, calc_acos, calc_cvr
 
 router = APIRouter()
 
@@ -62,14 +63,13 @@ def list_campaigns(
     kpi_map = {row["campaign_id"]: row for row in kpi_list}
 
     # Batch fetch latest budget per campaign (single query using subquery for max date)
-    from sqlalchemy.orm import aliased
 
     latest_budget_sq = (
         db.query(
             CampaignDailyRecord.campaign_id,
             func.max(CampaignDailyRecord.date).label("max_date"),
         )
-        .filter(CampaignDailyRecord.budget != None)
+        .filter(CampaignDailyRecord.budget.isnot(None))
         .group_by(CampaignDailyRecord.campaign_id)
         .subquery()
     )

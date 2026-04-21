@@ -1,14 +1,14 @@
 """pytest fixtures for Amazon Ad Tracker tests"""
 
 import pytest
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, event
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
-from backend.models import Base  # noqa: F401 — imports all models so metadata is populated
 from backend.database import get_db
 from backend.main import app
+from backend.models import Base  # noqa: F401 — imports all models so metadata is populated
 
 
 @pytest.fixture()

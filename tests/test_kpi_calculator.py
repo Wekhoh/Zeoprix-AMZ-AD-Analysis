@@ -1,11 +1,11 @@
 """Tests for KPI calculator pure functions"""
 
 from backend.services.kpi_calculator import (
-    calc_ctr,
-    calc_cpc,
-    calc_roas,
     calc_acos,
+    calc_cpc,
+    calc_ctr,
     calc_cvr,
+    calc_roas,
 )
 
 
