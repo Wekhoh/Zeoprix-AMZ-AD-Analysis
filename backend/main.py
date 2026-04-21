@@ -2,17 +2,18 @@
 
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
-from pathlib import Path
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
-from backend.config import settings
-from backend.database import init_db, SessionLocal, engine
 from backend.api import api_router
-from backend.logging_config import setup_logging, get_logger
+from backend.config import settings
+from backend.database import SessionLocal, init_db
+from backend.logging_config import get_logger, setup_logging
 from backend.middleware import RequestLoggingMiddleware
 
 logger = get_logger("main")
@@ -27,8 +28,8 @@ async def lifespan(app: FastAPI):
     # 启动时修复广告活动状态（从操作日志推断）
     db = SessionLocal()
     try:
-        from backend.services.status_service import update_campaign_statuses
         from backend.services.rule_engine import seed_default_rules
+        from backend.services.status_service import update_campaign_statuses
 
         updated = update_campaign_statuses(db)
         if updated:
@@ -92,7 +93,7 @@ app.include_router(api_router)
 @app.get("/api/health")
 def health():
     """Enhanced health check with DB stats"""
-    from backend.models import Campaign, PlacementRecord, Backup
+    from backend.models import Backup, Campaign, PlacementRecord
 
     result = {
         "status": "ok",

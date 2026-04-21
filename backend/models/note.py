@@ -1,7 +1,7 @@
 """运营决策笔记模型"""
 
-from sqlalchemy import Column, Index, Integer, String, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, ForeignKey, Index, Integer, String
+
 from backend.models.base import Base, TimestampMixin
 
 

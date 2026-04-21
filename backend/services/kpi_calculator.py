@@ -1,6 +1,7 @@
 """KPI 计算工具 — 替代 Excel 公式列"""
 
 from typing import Optional
+
 from backend.models.placement import PlacementRecord
 from backend.schemas.placement import PlacementOut
 

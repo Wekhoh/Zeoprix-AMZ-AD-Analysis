@@ -1,6 +1,6 @@
 """Tests for analysis_service — suggestion engine + target bid calculation"""
 
-from backend.services.analysis_service import generate_suggestions, _calc_target_bid
+from backend.services.analysis_service import _calc_target_bid, generate_suggestions
 
 
 class TestCalcTargetBid:

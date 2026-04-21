@@ -1,6 +1,7 @@
 """自动化规则模型"""
 
-from sqlalchemy import Column, Integer, String, Float
+from sqlalchemy import Column, Float, Integer, String
+
 from backend.models.base import Base, TimestampMixin
 
 

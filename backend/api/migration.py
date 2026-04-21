@@ -1,6 +1,6 @@
 """Excel 数据迁移 API"""
 
-from fastapi import APIRouter, UploadFile, File, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
 from backend.database import get_db

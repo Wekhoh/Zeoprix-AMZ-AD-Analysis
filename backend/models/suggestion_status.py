@@ -1,6 +1,7 @@
 """建议生命周期状态 — 跟踪已处理/延后的建议"""
 
 from sqlalchemy import Column, Integer, String
+
 from backend.models.base import Base, TimestampMixin
 
 

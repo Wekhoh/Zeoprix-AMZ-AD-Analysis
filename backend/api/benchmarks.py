@@ -1,11 +1,11 @@
 """品类基准对比 API"""
 
 from typing import Optional
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.models import Product
 from backend.services.benchmark_service import (
     CATEGORY_BENCHMARKS,
     CATEGORY_LABELS,

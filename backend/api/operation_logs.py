@@ -1,11 +1,12 @@
 """操作日志 API"""
 
 from typing import Optional
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.models import OperationLog, Campaign
+from backend.models import Campaign, OperationLog
 from backend.schemas.operation_log import OperationLogOut
 
 router = APIRouter()

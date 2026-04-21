@@ -1,12 +1,12 @@
 """展示位置 API"""
 
 from typing import Optional
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.models import PlacementRecord, Campaign
-from backend.schemas.placement import PlacementOut
+from backend.models import Campaign, PlacementRecord
 from backend.services.kpi_calculator import enrich_placement_kpis
 
 router = APIRouter()

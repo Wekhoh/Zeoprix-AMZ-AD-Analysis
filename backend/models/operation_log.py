@@ -1,7 +1,8 @@
 """操作日志模型"""
 
-from sqlalchemy import Column, Index, Integer, String, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlalchemy.orm import relationship
+
 from backend.models.base import Base, TimestampMixin
 
 

@@ -1,6 +1,7 @@
 """系统表: 导入历史、备份"""
 
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String
+
 from backend.models.base import Base, TimestampMixin
 
 

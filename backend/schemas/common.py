@@ -1,6 +1,7 @@
 """通用 schema"""
 
 from typing import Any, Optional
+
 from pydantic import BaseModel
 
 

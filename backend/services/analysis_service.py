@@ -8,20 +8,16 @@ from sqlalchemy.orm import Session
 
 from backend.config import settings
 from backend.models import Campaign, PlacementRecord, SuggestionStatus
-from backend.services.kpi_calculator import calc_roas, calc_acos
+from backend.services.kpi_calculator import calc_acos, calc_roas
+from backend.utils.amazon_rules import (
+    calc_max_possible_cpc,
+    get_bidding_strategy_advice,
+)
 
 
 def _suggestion_hash(suggestion_type: str, campaign_id: int | None) -> str:
     """Stable identifier for a suggestion used for lifecycle tracking."""
     return f"{suggestion_type}:{campaign_id or 0}"
-
-
-from backend.utils.amazon_rules import (
-    get_attribution_window,
-    calc_max_possible_cpc,
-    get_bidding_strategy_advice,
-    NEGATIVE_KEYWORD_BUFFER_HOURS,
-)
 
 
 def _calc_target_bid(
@@ -65,7 +61,8 @@ def generate_suggestions(
 
     for stat in campaign_stats:
         cid, name, status, base_bid = stat[0], stat[1], stat[2], stat[3]
-        ad_type, bidding_strategy = stat[4], stat[5]
+        # stat[4] ad_type reserved for future per-ad-type rule branches
+        bidding_strategy = stat[5]
         imp, clk, spd, orders, sales = (
             stat[6] or 0,
             stat[7] or 0,
@@ -73,7 +70,7 @@ def generate_suggestions(
             stat[9] or 0,
             stat[10] or 0.0,
         )
-        first_date, last_date = stat[11], stat[12]
+        # stat[11]/stat[12] first_date/last_date reserved for date-range surfacing
 
         roas = calc_roas(sales, spd)
         acos = calc_acos(spd, sales)
@@ -284,7 +281,8 @@ def generate_suggestions(
 
     # Filter out resolved/dismissed/active-snoozed suggestions (DB-level filtering)
     from datetime import date
-    from sqlalchemy import or_, and_
+
+    from sqlalchemy import and_, or_
 
     today_str = date.today().isoformat()
     hidden_rows = (

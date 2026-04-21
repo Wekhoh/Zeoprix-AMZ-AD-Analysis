@@ -2,12 +2,13 @@
 
 from datetime import datetime
 from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.models import OrganicSales, ImportHistory
+from backend.models import ImportHistory, OrganicSales
 
 router = APIRouter()
 

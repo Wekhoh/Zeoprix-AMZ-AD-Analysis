@@ -1,12 +1,13 @@
 """产品管理 API"""
 
 from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.models import Product, ProductVariant, Marketplace
+from backend.models import Marketplace, Product, ProductVariant
 
 router = APIRouter()
 

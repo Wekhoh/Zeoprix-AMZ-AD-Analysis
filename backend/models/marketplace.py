@@ -1,6 +1,7 @@
 """站点模型"""
 
 from sqlalchemy import Column, Integer, String
+
 from backend.models.base import Base, TimestampMixin
 
 

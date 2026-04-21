@@ -1,7 +1,8 @@
 """展示位置记录模型"""
 
-from sqlalchemy import Column, Index, Integer, String, Float, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Float, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlalchemy.orm import relationship
+
 from backend.models.base import Base, TimestampMixin
 
 
