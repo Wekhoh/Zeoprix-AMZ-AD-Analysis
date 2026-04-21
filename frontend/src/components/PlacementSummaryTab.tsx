@@ -1,5 +1,6 @@
 import { Table } from "antd";
 import { fmtPct, fmtUsd } from "../utils/formatters";
+import { renderAcos } from "../utils/renderKpi";
 
 export interface PlacementSummary {
 	placement_type: string;
@@ -69,18 +70,7 @@ const columns = [
 		title: "ACOS",
 		dataIndex: "acos",
 		key: "acos",
-		render: (v: number | null) => {
-			if (v == null) return "-";
-			return (
-				<span
-					style={{
-						color: v > 0.5 ? "#ff4d4f" : v < 0.25 ? "#52c41a" : undefined,
-					}}
-				>
-					{fmtPct(v, 2)}
-				</span>
-			);
-		},
+		render: (v: number | null) => renderAcos(v),
 	},
 	{
 		title: "CTR",
