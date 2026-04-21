@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Table, Tag } from "antd";
 import api from "../api/client";
 import { fmtPct, fmtUsd } from "../utils/formatters";
+import { renderAcos } from "../utils/renderKpi";
 
 export interface AdGroup {
 	id: number;
@@ -103,18 +104,7 @@ const adGroupColumns = [
 		dataIndex: "acos",
 		key: "acos",
 		width: 90,
-		render: (v: number | null) => {
-			if (v == null) return "-";
-			return (
-				<span
-					style={{
-						color: v > 0.5 ? "#ff4d4f" : v < 0.25 ? "#52c41a" : undefined,
-					}}
-				>
-					{fmtPct(v, 2)}
-				</span>
-			);
-		},
+		render: (v: number | null) => renderAcos(v),
 	},
 ];
 
